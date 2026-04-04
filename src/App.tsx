@@ -3,6 +3,7 @@ import { Reorder, useDragControls } from "motion/react";
 import AutoSuggestInput from "./components/AutoSuggestInput";
 import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
+import CodeEditor from "./components/CodeEditor";
 import Sidebar from "./components/Sidebar";
 import {
   AuthConfig,
@@ -62,6 +63,20 @@ function tryPrettyJson(raw: string): string {
   } catch {
     return raw;
   }
+}
+
+function detectResponseLanguage(response: { headers: Record<string, string>; body: string }): RawLanguage {
+  const ct = (response.headers["content-type"] || response.headers["Content-Type"] || "").toLowerCase();
+  if (ct.includes("json")) return "json";
+  if (ct.includes("xml")) return "xml";
+  if (ct.includes("html")) return "html";
+  if (ct.includes("javascript")) return "javascript";
+  // Sniff body
+  const trimmed = response.body.trimStart();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
+  if (trimmed.startsWith("<?xml") || trimmed.startsWith("<rss")) return "xml";
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) return "html";
+  return "text";
 }
 
 // Replace {{variable}} placeholders with environment values
@@ -230,11 +245,9 @@ const App: React.FC = () => {
       setTabs((prev) =>
         prev.map((t) => {
           if (t.id !== id) return t;
-          // Auto-set isDirty when request fields change on a saved request
+          // Auto-set isDirty when request fields change
           const touchesRequestField = Object.keys(updates).some((k) => REQUEST_FIELDS.has(k));
-          const dirty = touchesRequestField && t.savedRequestId
-            ? { isDirty: true }
-            : {};
+          const dirty = touchesRequestField ? { isDirty: true } : {};
           return { ...t, ...updates, ...dirty };
         }),
       );
@@ -1173,16 +1186,16 @@ const App: React.FC = () => {
                   </div>
                 )}
                 {activeTab.bodyType === "raw" && (
-                  <textarea
-                    className="body-textarea"
+                  <CodeEditor
+                    value={body}
+                    onChange={updatePayloadBody}
+                    language={activeTab.rawLanguage}
                     placeholder={
                       activeTab.rawLanguage === "json"
                         ? '{"key": "value"}'
                         : "Enter request body..."
                     }
-                    value={body}
-                    onChange={(e) => updatePayloadBody(e.target.value)}
-                    spellCheck={false}
+                    showFormatButton
                   />
                 )}
                 {(activeTab.bodyType === "form-data" ||
@@ -1337,11 +1350,9 @@ const App: React.FC = () => {
                   <div className="graphql-editor">
                     <div className="graphql-section">
                       <label className="graphql-label">Query</label>
-                      <textarea
-                        className="body-textarea graphql-query"
-                        placeholder={`query {\n  users {\n    id\n    name\n  }\n}`}
+                      <CodeEditor
                         value={activePayload.graphql.query}
-                        onChange={(e) =>
+                        onChange={(val) =>
                           updateTab(activeTab.id, {
                             payloads: activeTab.payloads.map((p) =>
                               p.id === activeTab.activePayloadId
@@ -1349,25 +1360,25 @@ const App: React.FC = () => {
                                     ...p,
                                     graphql: {
                                       ...p.graphql,
-                                      query: e.target.value,
+                                      query: val,
                                     },
                                   }
                                 : p,
                             ),
                           })
                         }
-                        spellCheck={false}
+                        language="javascript"
+                        placeholder={"query {\n  users {\n    id\n    name\n  }\n}"}
+                        className="graphql-query"
                       />
                     </div>
                     <div className="graphql-section">
                       <label className="graphql-label">
                         Variables (JSON)
                       </label>
-                      <textarea
-                        className="body-textarea graphql-variables"
-                        placeholder='{"id": 1}'
+                      <CodeEditor
                         value={activePayload.graphql.variables}
-                        onChange={(e) =>
+                        onChange={(val) =>
                           updateTab(activeTab.id, {
                             payloads: activeTab.payloads.map((p) =>
                               p.id === activeTab.activePayloadId
@@ -1375,14 +1386,17 @@ const App: React.FC = () => {
                                     ...p,
                                     graphql: {
                                       ...p.graphql,
-                                      variables: e.target.value,
+                                      variables: val,
                                     },
                                   }
                                 : p,
                             ),
                           })
                         }
-                        spellCheck={false}
+                        language="json"
+                        placeholder='{"id": 1}'
+                        className="graphql-variables"
+                        showFormatButton
                       />
                     </div>
                   </div>
@@ -1606,7 +1620,13 @@ const App: React.FC = () => {
 
                 {responsePanel === "body" && (
                   <div className="response-body">
-                    <pre>{tryPrettyJson(response.body)}</pre>
+                    <CodeEditor
+                      value={tryPrettyJson(response.body)}
+                      // eslint-disable-next-line @typescript-eslint/no-empty-function
+                      onChange={() => {}}
+                      language={detectResponseLanguage(response)}
+                      readOnly
+                    />
                   </div>
                 )}
 
