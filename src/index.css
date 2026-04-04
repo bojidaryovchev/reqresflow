@@ -4,6 +4,7 @@
   --bg-tertiary: #2d2d2d;
   --bg-input: #3c3c3c;
   --bg-hover: #383838;
+  --bg-active: #094771;
   --border: #404040;
   --text-primary: #cccccc;
   --text-secondary: #999999;
@@ -1391,6 +1392,14 @@ button {
   background: var(--bg-hover);
 }
 
+.request-item.active {
+  background: var(--bg-active);
+}
+
+.request-item.active .request-name {
+  color: var(--text-primary);
+}
+
 .request-method-badge {
   font-weight: 700;
   font-size: 10px;
@@ -1426,6 +1435,39 @@ button {
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border);
   font-size: 12px;
+}
+
+.request-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  min-width: 140px;
+  max-width: 280px;
+  flex: 1;
+}
+
+.request-name-input:hover {
+  border-color: var(--border);
+}
+
+.request-name-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-input);
+}
+
+.request-name-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.env-bar-separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
 }
 
 .env-select {

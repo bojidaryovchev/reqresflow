@@ -98,6 +98,37 @@ function substituteVars(
   });
 }
 
+// Parse query params from a URL string (preserving {{var}} templates)
+function parseQueryParams(
+  url: string,
+): { enabled: boolean; key: string; value: string }[] {
+  const qIdx = url.indexOf("?");
+  if (qIdx === -1) return [];
+  const qs = url.slice(qIdx + 1);
+  if (!qs) return [];
+  return qs.split("&").map((pair) => {
+    const eqIdx = pair.indexOf("=");
+    const key = eqIdx === -1 ? pair : pair.slice(0, eqIdx);
+    const value = eqIdx === -1 ? "" : pair.slice(eqIdx + 1);
+    return { enabled: true, key, value };
+  });
+}
+
+// Get the base URL (everything before ?)
+function getBaseUrl(url: string): string {
+  const qIdx = url.indexOf("?");
+  return qIdx === -1 ? url : url.slice(0, qIdx);
+}
+
+// Build query string from params (raw, no encoding — encoding happens at send time)
+function buildQueryString(
+  params: { enabled: boolean; key: string; value: string }[],
+): string {
+  const filled = params.filter((p) => p.enabled && p.key.trim());
+  if (filled.length === 0) return "";
+  return filled.map((p) => `${p.key}=${p.value}`).join("&");
+}
+
 function createEmptyTab(): RequestTabType {
   const payloadId = generateId();
   return {
@@ -144,6 +175,11 @@ function resolvePath(obj: unknown, path: string): string {
 }
 
 function getTabDisplayName(tab: RequestTabType): string {
+  // Prefer the explicit name if it's been set
+  if (tab.name && tab.name !== "Untitled") {
+    return tab.name;
+  }
+  // Otherwise derive from URL
   if (tab.url.trim()) {
     try {
       const u = new URL(
@@ -422,6 +458,35 @@ const App: React.FC = () => {
     window.electronAPI.saveCollections(updated);
   }, []);
 
+  // Rename active request and sync with collection if linked
+  const renameActiveRequest = useCallback(
+    (newName: string) => {
+      updateTab(activeTab.id, { name: newName });
+      // Sync with collection
+      if (activeTab.savedToCollectionId && activeTab.savedRequestId) {
+        setCollections((prev) => {
+          const updated = prev.map((c) => {
+            if (c.id !== activeTab.savedToCollectionId) return c;
+            return {
+              ...c,
+              requests: c.requests.map((r) =>
+                r.id === activeTab.savedRequestId ? { ...r, name: newName } : r,
+              ),
+            };
+          });
+          window.electronAPI.saveCollections(updated);
+          return updated;
+        });
+      }
+    },
+    [
+      activeTab.id,
+      activeTab.savedToCollectionId,
+      activeTab.savedRequestId,
+      updateTab,
+    ],
+  );
+
   // Persist environments when they change
   const handleEnvironmentsChange = useCallback(
     (updated: Environment[]) => {
@@ -562,21 +627,24 @@ const App: React.FC = () => {
   const getCurrentRequest = useCallback((): SavedRequest => {
     return {
       id: "",
-      name: activeTab.url.trim()
-        ? (() => {
-            try {
-              return (
-                new URL(
-                  activeTab.url.trim().startsWith("http")
-                    ? activeTab.url.trim()
-                    : `https://${activeTab.url.trim()}`,
-                ).pathname || activeTab.url.trim()
-              );
-            } catch {
-              return activeTab.url.trim();
-            }
-          })()
-        : "Untitled Request",
+      name:
+        activeTab.name && activeTab.name !== "Untitled"
+          ? activeTab.name
+          : activeTab.url.trim()
+            ? (() => {
+                try {
+                  return (
+                    new URL(
+                      activeTab.url.trim().startsWith("http")
+                        ? activeTab.url.trim()
+                        : `https://${activeTab.url.trim()}`,
+                    ).pathname || activeTab.url.trim()
+                  );
+                } catch {
+                  return activeTab.url.trim();
+                }
+              })()
+            : "Untitled Request",
       method: activeTab.method,
       url: activeTab.url,
       params: activeTab.params,
@@ -605,6 +673,14 @@ const App: React.FC = () => {
             t.savedRequestId === requestId,
         );
         if (existing) {
+          // Sync name from saved request if it differs
+          if (existing.name !== req.name) {
+            setTabs((prev) =>
+              prev.map((t) =>
+                t.id === existing.id ? { ...t, name: req.name } : t,
+              ),
+            );
+          }
           setActiveTabId(existing.id);
           return;
         }
@@ -697,7 +773,11 @@ const App: React.FC = () => {
         ...c,
         requests: c.requests.map((r) =>
           r.id === tab.savedRequestId
-            ? { ...request, id: r.id, name: r.name }
+            ? {
+                ...request,
+                id: r.id,
+                name: tab.name && tab.name !== "Untitled" ? tab.name : r.name,
+              }
             : r,
         ),
       };
@@ -762,11 +842,12 @@ const App: React.FC = () => {
 
     const vars = activeEnv?.variables || [];
 
-    // Build query string from enabled params
-    let fullUrl = substituteVars(activeTab.url.trim(), vars);
+    // Build the final URL: use base URL + encode enabled params with substituted vars
+    const baseUrl = substituteVars(getBaseUrl(activeTab.url.trim()), vars);
     const enabledParams = activeTab.params.filter(
       (p) => p.enabled && p.key.trim(),
     );
+    let fullUrl = baseUrl;
     if (enabledParams.length > 0) {
       const qs = enabledParams
         .map(
@@ -942,6 +1023,8 @@ const App: React.FC = () => {
         history={history}
         onLoadHistory={loadHistoryEntry}
         onClearHistory={clearHistory}
+        activeCollectionId={activeTab.savedToCollectionId}
+        activeRequestId={activeTab.savedRequestId}
       />
 
       {/* Main Panel */}
@@ -1016,6 +1099,14 @@ const App: React.FC = () => {
 
         {/* Environment Bar */}
         <div className="env-bar">
+          <input
+            className="request-name-input"
+            type="text"
+            value={activeTab.name === "Untitled" ? "" : activeTab.name}
+            placeholder="Request name..."
+            onChange={(e) => renameActiveRequest(e.target.value || "Untitled")}
+          />
+          <div className="env-bar-separator" />
           <select
             className="env-select"
             value={activeEnvId || ""}
@@ -1059,7 +1150,14 @@ const App: React.FC = () => {
             type="text"
             placeholder="Enter request URL..."
             value={activeTab.url}
-            onValueChange={(v) => updateTab(activeTab.id, { url: v })}
+            onValueChange={(v) => {
+              const parsed = parseQueryParams(v);
+              const params =
+                parsed.length > 0
+                  ? [...parsed, { enabled: true, key: "", value: "" }]
+                  : [{ enabled: true, key: "", value: "" }];
+              updateTab(activeTab.id, { url: v, params });
+            }}
             variables={activeEnv?.variables ?? []}
             envName={activeEnv?.name}
             onKeyDown={handleKeyDown}
@@ -1121,7 +1219,12 @@ const App: React.FC = () => {
             {requestPanel === "params" && (
               <KeyValueEditor
                 pairs={activeTab.params}
-                onChange={(p) => updateTab(activeTab.id, { params: p })}
+                onChange={(p) => {
+                  const base = getBaseUrl(activeTab.url);
+                  const qs = buildQueryString(p);
+                  const url = qs ? `${base}?${qs}` : base;
+                  updateTab(activeTab.id, { params: p, url });
+                }}
                 variables={activeEnv?.variables ?? []}
                 envName={activeEnv?.name}
               />

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Collection, SavedRequest, HistoryEntry } from "../types/electron";
 
 interface SidebarProps {
@@ -13,6 +13,8 @@ interface SidebarProps {
   history: HistoryEntry[];
   onLoadHistory: (entry: HistoryEntry) => void;
   onClearHistory: () => void;
+  activeCollectionId: string | null;
+  activeRequestId: string | null;
 }
 
 type SidebarSection = "collections" | "history";
@@ -37,6 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   history,
   onLoadHistory,
   onClearHistory,
+  activeCollectionId,
+  activeRequestId,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
     new Set(),
@@ -45,6 +49,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [editingName, setEditingName] = useState("");
   const [activeSection, setActiveSection] =
     useState<SidebarSection>("collections");
+
+  // Auto-expand collection containing the active request
+  useEffect(() => {
+    if (activeCollectionId) {
+      setExpandedCollections((prev) => {
+        if (prev.has(activeCollectionId)) return prev;
+        return new Set(prev).add(activeCollectionId);
+      });
+    }
+  }, [activeCollectionId]);
 
   const toggleExpanded = (id: string) => {
     setExpandedCollections((prev) => {
@@ -236,7 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                     {collection.requests.map((req) => (
                       <div
-                        className="request-item"
+                        className={`request-item${activeCollectionId === collection.id && activeRequestId === req.id ? " active" : ""}`}
                         key={req.id}
                         onClick={() =>
                           onLoadRequest(req, collection.id, req.id)
