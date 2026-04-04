@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Reorder, useDragControls } from "motion/react";
 import AutoSuggestInput from "./components/AutoSuggestInput";
 import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
@@ -102,6 +103,9 @@ function createEmptyTab(): RequestTabType {
     error: null,
     captures: [],
     auth: { type: "none" },
+    savedToCollectionId: null,
+    savedRequestId: null,
+    isDirty: false,
   };
 }
 
@@ -114,6 +118,74 @@ function resolvePath(obj: unknown, path: string): string {
     current = (current as Record<string, unknown>)[part];
   }
   return current == null ? "" : String(current);
+}
+
+function getTabDisplayName(tab: RequestTabType): string {
+  if (tab.url.trim()) {
+    try {
+      const u = new URL(
+        tab.url.trim().startsWith("http")
+          ? tab.url.trim()
+          : `https://${tab.url.trim()}`,
+      );
+      return u.pathname || tab.url.trim();
+    } catch {
+      return tab.url.trim();
+    }
+  }
+  return tab.name || "Untitled";
+}
+
+interface TabItemProps {
+  tab: RequestTabType;
+  isActive: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+}
+
+function TabItem({ tab, isActive, onActivate, onClose, onContextMenu }: TabItemProps) {
+  const controls = useDragControls();
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={tab}
+      id={tab.id}
+      dragListener={false}
+      dragControls={controls}
+      className={`request-tab-item ${isActive ? "active" : ""}`}
+      onClick={onActivate}
+      onContextMenu={onContextMenu}
+      onPointerDown={(e) => controls.start(e)}
+      whileDrag={{ boxShadow: "0 2px 8px rgba(0,0,0,0.32)", zIndex: 1 }}
+      transition={{ duration: 0.15 }}
+    >
+      <span
+        className="request-tab-method"
+        style={{
+          color:
+            METHOD_COLORS[tab.method as HttpMethod] ||
+            "var(--text-secondary)",
+        }}
+      >
+        {tab.method}
+      </span>
+      <span className="request-tab-name">{getTabDisplayName(tab)}</span>
+      {tab.isDirty && (
+        <span className="request-tab-dirty" title="Unsaved changes">●</span>
+      )}
+      <button
+        className="request-tab-close"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        ×
+      </button>
+    </Reorder.Item>
+  );
 }
 
 const App: React.FC = () => {
@@ -136,14 +208,35 @@ const App: React.FC = () => {
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
+  // Save-to-collection picker
+  const [showSavePicker, setShowSavePicker] = useState(false);
+
+  // Tab context menu
+  const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  const tabContextMenuRef = useRef<HTMLDivElement>(null);
+
   const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+
+  // Fields that represent request config (not response/UI state)
+  const REQUEST_FIELDS = new Set([
+    "method", "url", "params", "headers", "payloads", "activePayloadId",
+    "bodyType", "rawLanguage", "captures", "auth", "name",
+  ]);
 
   // Helper to update the active tab
   const updateTab = useCallback(
     (id: string, updates: Partial<RequestTabType>) => {
       setTabs((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          // Auto-set isDirty when request fields change on a saved request
+          const touchesRequestField = Object.keys(updates).some((k) => REQUEST_FIELDS.has(k));
+          const dirty = touchesRequestField && t.savedRequestId
+            ? { isDirty: true }
+            : {};
+          return { ...t, ...updates, ...dirty };
+        }),
       );
     },
     [],
@@ -177,6 +270,37 @@ const App: React.FC = () => {
     [activeTabId],
   );
 
+  const duplicateTab = useCallback((id: string) => {
+    setTabs((prev) => {
+      const source = prev.find((t) => t.id === id);
+      if (!source) return prev;
+      const newPayloads = source.payloads.map((p) => ({ ...p, id: generateId() }));
+      const activePayloadIdx = source.payloads.findIndex((p) => p.id === source.activePayloadId);
+      const dup: RequestTabType = {
+        ...source,
+        id: generateId(),
+        payloads: newPayloads,
+        activePayloadId: newPayloads[activePayloadIdx >= 0 ? activePayloadIdx : 0].id,
+        response: null,
+        error: null,
+        savedToCollectionId: null,
+        savedRequestId: null,
+        isDirty: false,
+      };
+      const idx = prev.findIndex((t) => t.id === id);
+      const next = [...prev];
+      next.splice(idx + 1, 0, dup);
+      setActiveTabId(dup.id);
+      return next;
+    });
+  }, []);
+
+  const closeAllTabs = useCallback(() => {
+    const fresh = createEmptyTab();
+    setTabs([fresh]);
+    setActiveTabId(fresh.id);
+  }, []);
+
   // Load collections, environments, history & session on mount
   useEffect(() => {
     Promise.all([
@@ -197,6 +321,9 @@ const App: React.FC = () => {
           rawLanguage: t.rawLanguage || "json" as RawLanguage,
           captures: t.captures || [],
           auth: t.auth || { type: "none" as const },
+          savedToCollectionId: t.savedToCollectionId ?? null,
+          savedRequestId: t.savedRequestId ?? null,
+          isDirty: t.isDirty ?? false,
           payloads: (t.payloads || []).map((p) => ({
             ...p,
             bodyType: p.bodyType || "none" as BodyType,
@@ -222,6 +349,18 @@ const App: React.FC = () => {
     const session: SessionState = { tabs, activeTabId, activeEnvId };
     window.electronAPI.saveSession(session);
   }, [tabs, activeTabId, activeEnvId, sessionLoaded]);
+
+  // Close tab context menu when clicking outside
+  useEffect(() => {
+    if (!tabContextMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (tabContextMenuRef.current && !tabContextMenuRef.current.contains(e.target as Node)) {
+        setTabContextMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [tabContextMenu]);
 
   // Persist collections when they change
   const handleCollectionsChange = useCallback((updated: Collection[]) => {
@@ -402,7 +541,18 @@ const App: React.FC = () => {
   }, [activeTab, body]);
 
   // Load a saved request into a new tab
-  const loadRequest = useCallback((req: SavedRequest) => {
+  const loadRequest = useCallback((req: SavedRequest, collectionId?: string, requestId?: string) => {
+    // If this request is already open in a tab, just focus it
+    if (collectionId && requestId) {
+      const existing = tabs.find(
+        (t) => t.savedToCollectionId === collectionId && t.savedRequestId === requestId
+      );
+      if (existing) {
+        setActiveTabId(existing.id);
+        return;
+      }
+    }
+
     const defaultPayload: Payload = {
       id: generateId(),
       name: "Default",
@@ -445,10 +595,13 @@ const App: React.FC = () => {
       error: null,
       captures: req.captures || [],
       auth: req.auth || { type: "none" },
+      savedToCollectionId: collectionId || null,
+      savedRequestId: requestId || null,
+      isDirty: false,
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
-  }, []);
+  }, [tabs]);
 
   // Load a history entry into a new tab
   const loadHistoryEntry = useCallback(
@@ -462,6 +615,74 @@ const App: React.FC = () => {
     setHistory([]);
     window.electronAPI.saveHistory([]);
   }, []);
+
+  // Save current tab's request back to its collection (overwrite) or open picker
+  const saveRequestToCollection = useCallback(() => {
+    const tab = activeTab;
+
+    // If not linked to a collection yet, show the picker
+    if (!tab.savedToCollectionId || !tab.savedRequestId) {
+      setShowSavePicker(true);
+      return;
+    }
+
+    const request = getCurrentRequest();
+    const updated = collections.map((c) => {
+      if (c.id !== tab.savedToCollectionId) return c;
+      return {
+        ...c,
+        requests: c.requests.map((r) =>
+          r.id === tab.savedRequestId
+            ? { ...request, id: r.id, name: r.name }
+            : r,
+        ),
+      };
+    });
+    setCollections(updated);
+    window.electronAPI.saveCollections(updated);
+    // Mark tab as clean
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === tab.id ? { ...t, isDirty: false } : t,
+      ),
+    );
+  }, [activeTab, collections, getCurrentRequest]);
+
+  // Save to a specific collection (for the picker)
+  const saveToPickedCollection = useCallback((collectionId: string) => {
+    const request = getCurrentRequest();
+    const newRequestId = generateId();
+    const updated = collections.map((c) => {
+      if (c.id !== collectionId) return c;
+      return {
+        ...c,
+        requests: [...c.requests, { ...request, id: newRequestId }],
+      };
+    });
+    setCollections(updated);
+    window.electronAPI.saveCollections(updated);
+    // Link the tab to this saved request
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTab.id
+          ? { ...t, savedToCollectionId: collectionId, savedRequestId: newRequestId, isDirty: false }
+          : t,
+      ),
+    );
+    setShowSavePicker(false);
+  }, [activeTab, collections, getCurrentRequest]);
+
+  // Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveRequestToCollection();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [saveRequestToCollection]);
 
   const sendRequest = useCallback(async () => {
     if (!activeTab.url.trim()) return;
@@ -486,8 +707,14 @@ const App: React.FC = () => {
       fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
     }
 
-    // Build headers
-    const headerObj: Record<string, string> = {};
+    // Build headers — start with auto-generated defaults (like Postman)
+    const headerObj: Record<string, string> = {
+      "User-Agent": "ReqResFlow/1.0",
+      Accept: "*/*",
+      "Accept-Encoding": "gzip, deflate, br",
+      Connection: "keep-alive",
+    };
+    // User-defined headers override defaults
     activeTab.headers
       .filter((h) => h.enabled && h.key.trim())
       .forEach((h) => {
@@ -618,22 +845,6 @@ const App: React.FC = () => {
   };
 
   // Derive tab display name
-  const getTabName = (tab: RequestTabType) => {
-    if (tab.url.trim()) {
-      try {
-        const u = new URL(
-          tab.url.trim().startsWith("http")
-            ? tab.url.trim()
-            : `https://${tab.url.trim()}`,
-        );
-        return u.pathname || tab.url.trim();
-      } catch {
-        return tab.url.trim();
-      }
-    }
-    return tab.name || "Untitled";
-  };
-
   const response = activeTab.response;
   const error = activeTab.error;
 
@@ -654,40 +865,67 @@ const App: React.FC = () => {
       <div className="main-panel">
         {/* Request Tabs Bar */}
         <div className="request-tabs-bar">
-          <div className="request-tabs-list">
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className={`request-tab-item ${tab.id === activeTabId ? "active" : ""}`}
-                onClick={() => setActiveTabId(tab.id)}
-              >
-                <span
-                  className="request-tab-method"
-                  style={{
-                    color:
-                      METHOD_COLORS[tab.method as HttpMethod] ||
-                      "var(--text-secondary)",
+          <div className="request-tabs-scroll">
+            <Reorder.Group
+              as="div"
+              axis="x"
+              values={tabs}
+              onReorder={setTabs}
+              className="request-tabs-list"
+            >
+              {tabs.map((tab) => (
+                <TabItem
+                  key={tab.id}
+                  tab={tab}
+                  isActive={tab.id === activeTabId}
+                  onActivate={() => setActiveTabId(tab.id)}
+                  onClose={() => closeTab(tab.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setTabContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
                   }}
-                >
-                  {tab.method}
-                </span>
-                <span className="request-tab-name">{getTabName(tab)}</span>
-                <button
-                  className="request-tab-close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(tab.id);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                />
+              ))}
+            </Reorder.Group>
           </div>
           <button className="request-tab-add" onClick={addTab} title="New Tab">
             +
           </button>
         </div>
+
+        {/* Tab Context Menu */}
+        {tabContextMenu && (
+          <div
+            ref={tabContextMenuRef}
+            className="tab-context-menu"
+            style={{ top: tabContextMenu.y, left: tabContextMenu.x }}
+          >
+            <button
+              onClick={() => {
+                duplicateTab(tabContextMenu.tabId);
+                setTabContextMenu(null);
+              }}
+            >
+              Duplicate Request
+            </button>
+            <button
+              onClick={() => {
+                closeTab(tabContextMenu.tabId);
+                setTabContextMenu(null);
+              }}
+            >
+              Close Tab
+            </button>
+            <button
+              onClick={() => {
+                closeAllTabs();
+                setTabContextMenu(null);
+              }}
+            >
+              Close All Tabs
+            </button>
+          </div>
+        )}
 
         {/* Environment Bar */}
         <div className="env-bar">
@@ -745,6 +983,20 @@ const App: React.FC = () => {
           >
             {loading ? "Sending..." : "Send"}
           </button>
+          <button
+            className={`save-btn${activeTab.isDirty ? " dirty" : ""}`}
+            onClick={saveRequestToCollection}
+            disabled={activeTab.savedRequestId ? !activeTab.isDirty : false}
+            title={
+              !activeTab.savedRequestId
+                ? "Save to collection (Ctrl+S)"
+                : activeTab.isDirty
+                  ? "Save changes to collection (Ctrl+S)"
+                  : "No unsaved changes"
+            }
+          >
+            {activeTab.savedRequestId ? "Save" : "Save"}
+          </button>
         </div>
 
         <div className="request-response">
@@ -780,11 +1032,38 @@ const App: React.FC = () => {
               />
             )}
             {requestPanel === "headers" && (
-              <KeyValueEditor
-                pairs={activeTab.headers}
-                onChange={(h) => updateTab(activeTab.id, { headers: h })}
-                variables={activeEnv?.variables ?? []}
-              />
+              <>
+                <KeyValueEditor
+                  pairs={activeTab.headers}
+                  onChange={(h) => updateTab(activeTab.id, { headers: h })}
+                  variables={activeEnv?.variables ?? []}
+                  headerMode
+                />
+                <div className="autogenerated-headers">
+                  <div className="autogenerated-headers-title">
+                    Auto-generated headers
+                    <span className="autogenerated-headers-hint">
+                      (override by adding a header with the same key)
+                    </span>
+                  </div>
+                  <div className="autogenerated-header-row">
+                    <span className="header-key">User-Agent</span>
+                    <span className="header-value">ReqResFlow/1.0</span>
+                  </div>
+                  <div className="autogenerated-header-row">
+                    <span className="header-key">Accept</span>
+                    <span className="header-value">*/*</span>
+                  </div>
+                  <div className="autogenerated-header-row">
+                    <span className="header-key">Accept-Encoding</span>
+                    <span className="header-value">gzip, deflate, br</span>
+                  </div>
+                  <div className="autogenerated-header-row">
+                    <span className="header-key">Connection</span>
+                    <span className="header-value">keep-alive</span>
+                  </div>
+                </div>
+              </>
             )}
             {requestPanel === "body" && (
               <div className="body-editor">
@@ -1354,6 +1633,45 @@ const App: React.FC = () => {
           onEnvironmentsChange={handleEnvironmentsChange}
           onClose={() => setShowEnvManager(false)}
         />
+      )}
+
+      {/* Save to Collection Picker Modal */}
+      {showSavePicker && (
+        <div className="modal-overlay" onClick={() => setShowSavePicker(false)}>
+          <div className="save-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="save-picker-header">
+              <span className="save-picker-title">Save to Collection</span>
+              <button
+                className="save-picker-close"
+                onClick={() => setShowSavePicker(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="save-picker-body">
+              {collections.length === 0 ? (
+                <div className="save-picker-empty">
+                  No collections yet. Create one from the sidebar first.
+                </div>
+              ) : (
+                <div className="save-picker-list">
+                  {collections.map((c) => (
+                    <button
+                      key={c.id}
+                      className="save-picker-item"
+                      onClick={() => saveToPickedCollection(c.id)}
+                    >
+                      <span className="save-picker-collection-name">{c.name}</span>
+                      <span className="save-picker-collection-count">
+                        {c.requests.length} request{c.requests.length !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

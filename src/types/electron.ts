@@ -115,6 +115,9 @@ export interface RequestTab {
   error: string | null;
   captures: ResponseCapture[];
   auth: AuthConfig;
+  savedToCollectionId: string | null;
+  savedRequestId: string | null;
+  isDirty: boolean;
 }
 
 declare global {
