@@ -7,4 +7,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     headers: Record<string, string>;
     body?: string;
   }) => ipcRenderer.invoke('send-request', config),
+
+  // Collections
+  loadCollections: () => ipcRenderer.invoke('collections:load'),
+  saveCollections: (collections: unknown) => ipcRenderer.invoke('collections:save', collections),
+
+  // Environments
+  loadEnvironments: () => ipcRenderer.invoke('environments:load'),
+  saveEnvironments: (environments: unknown) => ipcRenderer.invoke('environments:save', environments),
 });

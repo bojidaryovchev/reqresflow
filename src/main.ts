@@ -1,11 +1,49 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+// ── Data directory setup ──
+function getDataDir(): string {
+  const dir = path.join(app.getPath('userData'), 'reqresflow-data');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function getCollectionsPath(): string {
+  return path.join(getDataDir(), 'collections.json');
+}
+
+function getEnvironmentsPath(): string {
+  return path.join(getDataDir(), 'environments.json');
+}
+
+// ── IPC: Collections ──
+ipcMain.handle('collections:load', () => {
+  const filePath = getCollectionsPath();
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+});
+
+ipcMain.handle('collections:save', (_event, collections: unknown) => {
+  fs.writeFileSync(getCollectionsPath(), JSON.stringify(collections, null, 2), 'utf-8');
+});
+
+// ── IPC: Environments ──
+ipcMain.handle('environments:load', () => {
+  const filePath = getEnvironmentsPath();
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+});
+
+ipcMain.handle('environments:save', (_event, environments: unknown) => {
+  fs.writeFileSync(getEnvironmentsPath(), JSON.stringify(environments, null, 2), 'utf-8');
+});
 
 // ── IPC: HTTP Request Handler ──
 ipcMain.handle('send-request', async (_event, config: {

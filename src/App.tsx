@@ -1,5 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import KeyValueEditor, { KeyValuePair } from './components/KeyValueEditor';
+import Sidebar from './components/Sidebar';
+import EnvManager from './components/EnvManager';
+import { Collection, Environment, SavedRequest } from './types/electron';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type RequestTab = 'params' | 'headers' | 'body';
@@ -43,6 +46,14 @@ function tryPrettyJson(raw: string): string {
   }
 }
 
+// Replace {{variable}} placeholders with environment values
+function substituteVars(text: string, variables: { key: string; value: string }[]): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, name) => {
+    const found = variables.find((v) => v.key === name);
+    return found ? found.value : match;
+  });
+}
+
 const App: React.FC = () => {
   const [method, setMethod] = useState<HttpMethod>('GET');
   const [url, setUrl] = useState('');
@@ -55,6 +66,65 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Collections
+  const [collections, setCollections] = useState<Collection[]>([]);
+
+  // Environments
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [activeEnvId, setActiveEnvId] = useState<string | null>(null);
+  const [showEnvManager, setShowEnvManager] = useState(false);
+
+  const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
+
+  // Load collections & environments on mount
+  useEffect(() => {
+    window.electronAPI.loadCollections().then(setCollections);
+    window.electronAPI.loadEnvironments().then((envs) => {
+      setEnvironments(envs);
+      if (envs.length > 0) setActiveEnvId(envs[0].id);
+    });
+  }, []);
+
+  // Persist collections when they change
+  const handleCollectionsChange = useCallback((updated: Collection[]) => {
+    setCollections(updated);
+    window.electronAPI.saveCollections(updated);
+  }, []);
+
+  // Persist environments when they change
+  const handleEnvironmentsChange = useCallback((updated: Environment[]) => {
+    setEnvironments(updated);
+    window.electronAPI.saveEnvironments(updated);
+    // If active env was deleted, reset
+    if (activeEnvId && !updated.find((e) => e.id === activeEnvId)) {
+      setActiveEnvId(updated.length > 0 ? updated[0].id : null);
+    }
+  }, [activeEnvId]);
+
+  // Get current request state as a SavedRequest
+  const getCurrentRequest = useCallback((): SavedRequest => {
+    return {
+      id: '',
+      name: url.trim() ? new URL(url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`).pathname || url.trim() : 'Untitled Request',
+      method,
+      url,
+      params,
+      headers,
+      body,
+    };
+  }, [method, url, params, headers, body]);
+
+  // Load a saved request into the editor
+  const loadRequest = useCallback((req: SavedRequest) => {
+    setMethod(req.method as HttpMethod);
+    setUrl(req.url);
+    setParams(req.params.length > 0 ? req.params : [{ enabled: true, key: '', value: '' }]);
+    setHeaders(req.headers.length > 0 ? req.headers : [{ enabled: true, key: '', value: '' }]);
+    setBody(req.body);
+    setResponse(null);
+    setError(null);
+  }, []);
+
   const sendRequest = useCallback(async () => {
     if (!url.trim()) return;
 
@@ -62,26 +132,32 @@ const App: React.FC = () => {
     setError(null);
     setResponse(null);
 
-    // Build query string from enabled params
-    let fullUrl = url.trim();
+    const vars = activeEnv?.variables || [];
+
+    // Build query string from enabled params (with var substitution)
+    let fullUrl = substituteVars(url.trim(), vars);
     const enabledParams = params.filter((p) => p.enabled && p.key.trim());
     if (enabledParams.length > 0) {
-      const qs = enabledParams.map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+      const qs = enabledParams
+        .map((p) => `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`)
+        .join('&');
       fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
     }
 
-    // Build headers from enabled pairs
+    // Build headers from enabled pairs (with var substitution)
     const headerObj: Record<string, string> = {};
     headers.filter((h) => h.enabled && h.key.trim()).forEach((h) => {
-      headerObj[h.key] = h.value;
+      headerObj[substituteVars(h.key, vars)] = substituteVars(h.value, vars);
     });
+
+    const resolvedBody = ['POST', 'PUT', 'PATCH'].includes(method) ? substituteVars(body, vars) : undefined;
 
     try {
       const result = await window.electronAPI.sendRequest({
         method,
         url: fullUrl,
         headers: headerObj,
-        body: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+        body: resolvedBody,
       });
       setResponse(result);
     } catch (err: unknown) {
@@ -89,7 +165,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [method, url, params, headers, body]);
+  }, [method, url, params, headers, body, activeEnv]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') sendRequest();
@@ -98,19 +174,32 @@ const App: React.FC = () => {
   return (
     <div className="app">
       {/* Sidebar */}
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h1>ReqResFlow</h1>
-        </div>
-        <div className="sidebar-content">
-          <div className="sidebar-empty">
-            No saved requests yet.<br />Send a request to get started.
-          </div>
-        </div>
-      </div>
+      <Sidebar
+        collections={collections}
+        onCollectionsChange={handleCollectionsChange}
+        onLoadRequest={loadRequest}
+        onSaveRequest={getCurrentRequest}
+      />
 
       {/* Main Panel */}
       <div className="main-panel">
+        {/* Environment Bar */}
+        <div className="env-bar">
+          <select
+            className="env-select"
+            value={activeEnvId || ''}
+            onChange={(e) => setActiveEnvId(e.target.value || null)}
+          >
+            <option value="">No Environment</option>
+            {environments.map((env) => (
+              <option key={env.id} value={env.id}>{env.name}</option>
+            ))}
+          </select>
+          <button className="env-manage-btn" onClick={() => setShowEnvManager(true)}>
+            Manage
+          </button>
+        </div>
+
         {/* URL Bar */}
         <div className="url-bar">
           <select
@@ -223,6 +312,15 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Environment Manager Modal */}
+      {showEnvManager && (
+        <EnvManager
+          environments={environments}
+          onEnvironmentsChange={handleEnvironmentsChange}
+          onClose={() => setShowEnvManager(false)}
+        />
+      )}
     </div>
   );
 };
