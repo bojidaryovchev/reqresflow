@@ -5,10 +5,12 @@ import KeyValueEditor from "./components/KeyValueEditor";
 import Sidebar from "./components/Sidebar";
 import {
   AuthConfig,
+  BodyType,
   Collection,
   Environment,
   HistoryEntry,
   Payload,
+  RawLanguage,
   RequestTab as RequestTabType,
   ResponseCapture,
   SavedRequest,
@@ -81,8 +83,21 @@ function createEmptyTab(): RequestTabType {
     url: "",
     params: [{ enabled: true, key: "", value: "" }],
     headers: [{ enabled: true, key: "", value: "" }],
-    payloads: [{ id: payloadId, name: "Default", body: "" }],
+    payloads: [
+      {
+        id: payloadId,
+        name: "Default",
+        body: "",
+        bodyType: "none",
+        rawLanguage: "json",
+        formData: [{ enabled: true, key: "", value: "", type: "text" }],
+        graphql: { query: "", variables: "" },
+        binaryFilePath: "",
+      },
+    ],
     activePayloadId: payloadId,
+    bodyType: "none",
+    rawLanguage: "json",
     response: null,
     error: null,
     captures: [],
@@ -175,7 +190,23 @@ const App: React.FC = () => {
       setHistory(hist);
 
       if (session && session.tabs && session.tabs.length > 0) {
-        setTabs(session.tabs);
+        // Migrate old session tabs that may be missing new fields
+        const migratedTabs = session.tabs.map((t: RequestTabType) => ({
+          ...t,
+          bodyType: t.bodyType || "none" as BodyType,
+          rawLanguage: t.rawLanguage || "json" as RawLanguage,
+          captures: t.captures || [],
+          auth: t.auth || { type: "none" as const },
+          payloads: (t.payloads || []).map((p) => ({
+            ...p,
+            bodyType: p.bodyType || "none" as BodyType,
+            rawLanguage: p.rawLanguage || "json" as RawLanguage,
+            formData: p.formData || [{ enabled: true, key: "", value: "", type: "text" as const }],
+            graphql: p.graphql || { query: "", variables: "" },
+            binaryFilePath: p.binaryFilePath || "",
+          })),
+        }));
+        setTabs(migratedTabs);
         setActiveTabId(session.activeTabId);
         setActiveEnvId(session.activeEnvId);
       } else {
@@ -229,6 +260,11 @@ const App: React.FC = () => {
       id: generateId(),
       name: `Payload ${activeTab.payloads.length + 1}`,
       body: "",
+      bodyType: activeTab.bodyType,
+      rawLanguage: activeTab.rawLanguage,
+      formData: [{ enabled: true, key: "", value: "", type: "text" }],
+      graphql: { query: "", variables: "" },
+      binaryFilePath: "",
     };
     updateTab(activeTab.id, {
       payloads: [...activeTab.payloads, newPayload],
@@ -353,6 +389,11 @@ const App: React.FC = () => {
       params: activeTab.params,
       headers: activeTab.headers,
       body,
+      bodyType: activeTab.bodyType,
+      rawLanguage: activeTab.rawLanguage,
+      formData: activePayload?.formData,
+      graphql: activePayload?.graphql,
+      binaryFilePath: activePayload?.binaryFilePath,
       payloads: activeTab.payloads,
       activePayloadId: activeTab.activePayloadId,
       captures: activeTab.captures,
@@ -362,10 +403,27 @@ const App: React.FC = () => {
 
   // Load a saved request into a new tab
   const loadRequest = useCallback((req: SavedRequest) => {
+    const defaultPayload: Payload = {
+      id: generateId(),
+      name: "Default",
+      body: req.body,
+      bodyType: req.bodyType || "none",
+      rawLanguage: req.rawLanguage || "json",
+      formData: req.formData || [{ enabled: true, key: "", value: "", type: "text" }],
+      graphql: req.graphql || { query: "", variables: "" },
+      binaryFilePath: req.binaryFilePath || "",
+    };
     const payloads =
       req.payloads && req.payloads.length > 0
-        ? req.payloads
-        : [{ id: generateId(), name: "Default", body: req.body }];
+        ? req.payloads.map((p) => ({
+            ...p,
+            bodyType: p.bodyType || req.bodyType || "none" as BodyType,
+            rawLanguage: p.rawLanguage || req.rawLanguage || "json" as RawLanguage,
+            formData: p.formData || [{ enabled: true, key: "", value: "", type: "text" as const }],
+            graphql: p.graphql || { query: "", variables: "" },
+            binaryFilePath: p.binaryFilePath || "",
+          }))
+        : [defaultPayload];
     const newTab: RequestTabType = {
       id: generateId(),
       name: req.name,
@@ -381,6 +439,8 @@ const App: React.FC = () => {
           : [{ enabled: true, key: "", value: "" }],
       payloads,
       activePayloadId: req.activePayloadId || payloads[0].id,
+      bodyType: req.bodyType || "none",
+      rawLanguage: req.rawLanguage || "json",
       response: null,
       error: null,
       captures: req.captures || [],
@@ -444,9 +504,70 @@ const App: React.FC = () => {
       headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
     }
 
-    const resolvedBody = ["POST", "PUT", "PATCH"].includes(activeTab.method)
-      ? substituteVars(body, vars)
-      : undefined;
+    const resolvedBody = (() => {
+      if (!["POST", "PUT", "PATCH"].includes(activeTab.method)) return undefined;
+      const bt = activeTab.bodyType;
+      if (bt === "none") return undefined;
+      if (bt === "raw") return substituteVars(body, vars);
+      if (bt === "graphql" && activePayload) {
+        const q = substituteVars(activePayload.graphql.query, vars);
+        const v = activePayload.graphql.variables.trim()
+          ? substituteVars(activePayload.graphql.variables, vars)
+          : undefined;
+        try {
+          return JSON.stringify({ query: q, variables: v ? JSON.parse(v) : undefined });
+        } catch {
+          return JSON.stringify({ query: q, variables: v });
+        }
+      }
+      if (bt === "x-www-form-urlencoded" && activePayload) {
+        const pairs = activePayload.formData.filter((f) => f.enabled && f.key.trim());
+        return pairs
+          .map(
+            (f) =>
+              `${encodeURIComponent(substituteVars(f.key, vars))}=${encodeURIComponent(substituteVars(f.value, vars))}`,
+          )
+          .join("&");
+      }
+      if (bt === "form-data" && activePayload) {
+        // For form-data we build a multipart boundary manually (text fields only)
+        const boundary = `----ReqResFlow${Date.now()}`;
+        const pairs = activePayload.formData.filter((f) => f.enabled && f.key.trim());
+        let multipart = "";
+        for (const f of pairs) {
+          multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
+        }
+        multipart += `--${boundary}--\r\n`;
+        headerObj["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
+        return multipart;
+      }
+      if (bt === "binary" && activePayload?.binaryFilePath) {
+        return activePayload.binaryFilePath; // handled in main process
+      }
+      return undefined;
+    })();
+
+    // Set appropriate Content-Type if not already set
+    const hasContentType = Object.keys(headerObj).some(
+      (k) => k.toLowerCase() === "content-type",
+    );
+    if (resolvedBody && !hasContentType) {
+      const bt = activeTab.bodyType;
+      if (bt === "raw") {
+        const langMap: Record<string, string> = {
+          json: "application/json",
+          text: "text/plain",
+          xml: "application/xml",
+          html: "text/html",
+          javascript: "application/javascript",
+        };
+        headerObj["Content-Type"] = langMap[activeTab.rawLanguage] || "text/plain";
+      } else if (bt === "x-www-form-urlencoded") {
+        headerObj["Content-Type"] = "application/x-www-form-urlencoded";
+      } else if (bt === "graphql") {
+        headerObj["Content-Type"] = "application/json";
+      }
+    }
 
     try {
       const result = await window.electronAPI.sendRequest({
@@ -454,6 +575,7 @@ const App: React.FC = () => {
         url: fullUrl,
         headers: headerObj,
         body: resolvedBody,
+        bodyType: activeTab.bodyType,
       });
       updateTab(activeTab.id, { response: result, error: null });
 
@@ -666,6 +788,63 @@ const App: React.FC = () => {
             )}
             {requestPanel === "body" && (
               <div className="body-editor">
+                <div className="body-type-bar">
+                  {(
+                    [
+                      "none",
+                      "form-data",
+                      "x-www-form-urlencoded",
+                      "raw",
+                      "binary",
+                      "graphql",
+                    ] as BodyType[]
+                  ).map((bt) => (
+                    <label key={bt} className="body-type-option">
+                      <input
+                        type="radio"
+                        name="bodyType"
+                        checked={activeTab.bodyType === bt}
+                        onChange={() => {
+                          updateTab(activeTab.id, { bodyType: bt });
+                          if (activePayload) {
+                            updateTab(activeTab.id, {
+                              bodyType: bt,
+                              payloads: activeTab.payloads.map((p) =>
+                                p.id === activeTab.activePayloadId
+                                  ? { ...p, bodyType: bt }
+                                  : p,
+                              ),
+                            });
+                          }
+                        }}
+                      />
+                      <span>{bt}</span>
+                    </label>
+                  ))}
+                  {activeTab.bodyType === "raw" && (
+                    <select
+                      className="raw-language-select"
+                      value={activeTab.rawLanguage}
+                      onChange={(e) => {
+                        const lang = e.target.value as RawLanguage;
+                        updateTab(activeTab.id, {
+                          rawLanguage: lang,
+                          payloads: activeTab.payloads.map((p) =>
+                            p.id === activeTab.activePayloadId
+                              ? { ...p, rawLanguage: lang }
+                              : p,
+                          ),
+                        });
+                      }}
+                    >
+                      <option value="json">JSON</option>
+                      <option value="text">Text</option>
+                      <option value="xml">XML</option>
+                      <option value="html">HTML</option>
+                      <option value="javascript">JavaScript</option>
+                    </select>
+                  )}
+                </div>
                 <div className="payload-bar">
                   <div className="payload-tabs">
                     {activeTab.payloads.map((p) => (
@@ -709,13 +888,226 @@ const App: React.FC = () => {
                     />
                   )}
                 </div>
-                <textarea
-                  className="body-textarea"
-                  placeholder='{"key": "value"}'
-                  value={body}
-                  onChange={(e) => updatePayloadBody(e.target.value)}
-                  spellCheck={false}
-                />
+                {activeTab.bodyType === "none" && (
+                  <div className="body-none-info">
+                    This request does not have a body.
+                  </div>
+                )}
+                {activeTab.bodyType === "raw" && (
+                  <textarea
+                    className="body-textarea"
+                    placeholder={
+                      activeTab.rawLanguage === "json"
+                        ? '{"key": "value"}'
+                        : "Enter request body..."
+                    }
+                    value={body}
+                    onChange={(e) => updatePayloadBody(e.target.value)}
+                    spellCheck={false}
+                  />
+                )}
+                {(activeTab.bodyType === "form-data" ||
+                  activeTab.bodyType === "x-www-form-urlencoded") &&
+                  activePayload && (
+                    <div className="form-data-editor">
+                      {activePayload.formData.map((field, i) => (
+                        <div className="form-data-row" key={i}>
+                          <input
+                            type="checkbox"
+                            checked={field.enabled}
+                            onChange={(e) => {
+                              const updated = [...activePayload.formData];
+                              updated[i] = {
+                                ...updated[i],
+                                enabled: e.target.checked,
+                              };
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? { ...p, formData: updated }
+                                    : p,
+                                ),
+                              });
+                            }}
+                          />
+                          <AutoSuggestInput
+                            type="text"
+                            placeholder="Key"
+                            value={field.key}
+                            onValueChange={(v) => {
+                              const updated = [...activePayload.formData];
+                              updated[i] = { ...updated[i], key: v };
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? { ...p, formData: updated }
+                                    : p,
+                                ),
+                              });
+                            }}
+                            variables={activeEnv?.variables ?? []}
+                          />
+                          <AutoSuggestInput
+                            type="text"
+                            placeholder="Value"
+                            value={field.value}
+                            onValueChange={(v) => {
+                              const updated = [...activePayload.formData];
+                              updated[i] = { ...updated[i], value: v };
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? { ...p, formData: updated }
+                                    : p,
+                                ),
+                              });
+                            }}
+                            variables={activeEnv?.variables ?? []}
+                          />
+                          {activeTab.bodyType === "form-data" && (
+                            <select
+                              className="form-data-type-select"
+                              value={field.type}
+                              onChange={(e) => {
+                                const updated = [...activePayload.formData];
+                                updated[i] = {
+                                  ...updated[i],
+                                  type: e.target.value as "text" | "file",
+                                };
+                                updateTab(activeTab.id, {
+                                  payloads: activeTab.payloads.map((p) =>
+                                    p.id === activeTab.activePayloadId
+                                      ? { ...p, formData: updated }
+                                      : p,
+                                  ),
+                                });
+                              }}
+                            >
+                              <option value="text">Text</option>
+                              <option value="file">File</option>
+                            </select>
+                          )}
+                          <button
+                            className="kv-remove-btn"
+                            onClick={() => {
+                              const updated = activePayload.formData.filter(
+                                (_, j) => j !== i,
+                              );
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? { ...p, formData: updated }
+                                    : p,
+                                ),
+                              });
+                            }}
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        className="kv-add-btn"
+                        onClick={() => {
+                          const updated = [
+                            ...activePayload.formData,
+                            {
+                              enabled: true,
+                              key: "",
+                              value: "",
+                              type: "text" as const,
+                            },
+                          ];
+                          updateTab(activeTab.id, {
+                            payloads: activeTab.payloads.map((p) =>
+                              p.id === activeTab.activePayloadId
+                                ? { ...p, formData: updated }
+                                : p,
+                            ),
+                          });
+                        }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                {activeTab.bodyType === "binary" && activePayload && (
+                  <div className="binary-editor">
+                    <div className="binary-info">
+                      Select a file to send as the request body.
+                    </div>
+                    <input
+                      type="text"
+                      className="binary-path-input"
+                      placeholder="File path (e.g. C:\files\image.png)"
+                      value={activePayload.binaryFilePath}
+                      onChange={(e) =>
+                        updateTab(activeTab.id, {
+                          payloads: activeTab.payloads.map((p) =>
+                            p.id === activeTab.activePayloadId
+                              ? { ...p, binaryFilePath: e.target.value }
+                              : p,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                )}
+                {activeTab.bodyType === "graphql" && activePayload && (
+                  <div className="graphql-editor">
+                    <div className="graphql-section">
+                      <label className="graphql-label">Query</label>
+                      <textarea
+                        className="body-textarea graphql-query"
+                        placeholder={`query {\n  users {\n    id\n    name\n  }\n}`}
+                        value={activePayload.graphql.query}
+                        onChange={(e) =>
+                          updateTab(activeTab.id, {
+                            payloads: activeTab.payloads.map((p) =>
+                              p.id === activeTab.activePayloadId
+                                ? {
+                                    ...p,
+                                    graphql: {
+                                      ...p.graphql,
+                                      query: e.target.value,
+                                    },
+                                  }
+                                : p,
+                            ),
+                          })
+                        }
+                        spellCheck={false}
+                      />
+                    </div>
+                    <div className="graphql-section">
+                      <label className="graphql-label">
+                        Variables (JSON)
+                      </label>
+                      <textarea
+                        className="body-textarea graphql-variables"
+                        placeholder='{"id": 1}'
+                        value={activePayload.graphql.variables}
+                        onChange={(e) =>
+                          updateTab(activeTab.id, {
+                            payloads: activeTab.payloads.map((p) =>
+                              p.id === activeTab.activePayloadId
+                                ? {
+                                    ...p,
+                                    graphql: {
+                                      ...p.graphql,
+                                      variables: e.target.value,
+                                    },
+                                  }
+                                : p,
+                            ),
+                          })
+                        }
+                        spellCheck={false}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {requestPanel === "auth" && (

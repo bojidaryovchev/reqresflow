@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     url: string;
     headers: Record<string, string>;
     body?: string;
+    bodyType?: string;
   }) => ipcRenderer.invoke("send-request", config),
 
   // Collections

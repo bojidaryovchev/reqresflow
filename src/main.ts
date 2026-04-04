@@ -97,6 +97,7 @@ ipcMain.handle(
       url: string;
       headers: Record<string, string>;
       body?: string;
+      bodyType?: string;
     },
   ) => {
     const start = performance.now();
@@ -104,19 +105,20 @@ ipcMain.handle(
     try {
       const fetchOptions: RequestInit = {
         method: config.method,
-        headers: config.headers,
+        headers: { ...config.headers },
       };
 
       if (config.body && ["POST", "PUT", "PATCH"].includes(config.method)) {
-        fetchOptions.body = config.body;
-        // Auto-set Content-Type if not provided
-        if (
-          !Object.keys(config.headers).some(
-            (k) => k.toLowerCase() === "content-type",
-          )
-        ) {
-          (fetchOptions.headers as Record<string, string>)["Content-Type"] =
-            "application/json";
+        // For binary body type, read the file from disk
+        if (config.bodyType === "binary" && config.body) {
+          const fs = await import("fs");
+          if (fs.existsSync(config.body)) {
+            fetchOptions.body = fs.readFileSync(config.body);
+          } else {
+            throw new Error(`File not found: ${config.body}`);
+          }
+        } else {
+          fetchOptions.body = config.body;
         }
       }
 

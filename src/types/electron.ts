@@ -1,8 +1,22 @@
+export type BodyType =
+  | "none"
+  | "form-data"
+  | "x-www-form-urlencoded"
+  | "raw"
+  | "binary"
+  | "graphql";
+
+export type RawLanguage = "json" | "text" | "xml" | "html" | "javascript";
+
 export interface RequestConfig {
   method: string;
   url: string;
   headers: Record<string, string>;
   body?: string;
+  bodyType?: BodyType;
+  formData?: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  rawLanguage?: RawLanguage;
+  graphql?: { query: string; variables: string };
 }
 
 export interface ResponseData {
@@ -18,6 +32,11 @@ export interface Payload {
   id: string;
   name: string;
   body: string;
+  bodyType: BodyType;
+  rawLanguage: RawLanguage;
+  formData: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  graphql: { query: string; variables: string };
+  binaryFilePath: string;
 }
 
 export interface ResponseCapture {
@@ -41,6 +60,11 @@ export interface SavedRequest {
   params: { enabled: boolean; key: string; value: string }[];
   headers: { enabled: boolean; key: string; value: string }[];
   body: string;
+  bodyType?: BodyType;
+  rawLanguage?: RawLanguage;
+  formData?: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  graphql?: { query: string; variables: string };
+  binaryFilePath?: string;
   payloads?: Payload[];
   activePayloadId?: string | null;
   captures?: ResponseCapture[];
@@ -85,6 +109,8 @@ export interface RequestTab {
   headers: { enabled: boolean; key: string; value: string }[];
   payloads: Payload[];
   activePayloadId: string;
+  bodyType: BodyType;
+  rawLanguage: RawLanguage;
   response: ResponseData | null;
   error: string | null;
   captures: ResponseCapture[];
