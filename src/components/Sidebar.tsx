@@ -4,7 +4,11 @@ import { Collection, SavedRequest, HistoryEntry } from "../types/electron";
 interface SidebarProps {
   collections: Collection[];
   onCollectionsChange: (collections: Collection[]) => void;
-  onLoadRequest: (request: SavedRequest, collectionId?: string, requestId?: string) => void;
+  onLoadRequest: (
+    request: SavedRequest,
+    collectionId?: string,
+    requestId?: string,
+  ) => void;
   onSaveRequest: () => SavedRequest;
   history: HistoryEntry[];
   onLoadHistory: (entry: HistoryEntry) => void;
@@ -234,7 +238,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <div
                         className="request-item"
                         key={req.id}
-                        onClick={() => onLoadRequest(req, collection.id, req.id)}
+                        onClick={() =>
+                          onLoadRequest(req, collection.id, req.id)
+                        }
                       >
                         <span
                           className="request-method-badge"

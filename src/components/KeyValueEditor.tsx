@@ -95,7 +95,7 @@ const HTTP_HEADER_NAMES = [
 ];
 
 const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
-  "Accept": [
+  Accept: [
     "application/json",
     "application/xml",
     "text/html",
@@ -129,12 +129,7 @@ const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
     "zh-CN",
     "*",
   ],
-  "Authorization": [
-    "Bearer ",
-    "Basic ",
-    "Digest ",
-    "Token ",
-  ],
+  Authorization: ["Bearer ", "Basic ", "Digest ", "Token "],
   "Cache-Control": [
     "no-cache",
     "no-store",
@@ -146,7 +141,7 @@ const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
     "private",
     "must-revalidate",
   ],
-  "Connection": ["keep-alive", "close"],
+  Connection: ["keep-alive", "close"],
   "Content-Disposition": [
     "attachment",
     "inline",
@@ -178,19 +173,22 @@ const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
     "image/webp",
     "image/svg+xml",
   ],
-  "DNT": ["0", "1"],
-  "Expect": ["100-continue"],
-  "Forwarded": ["for=192.0.2.1", 'for=192.0.2.1; proto=https; by=203.0.113.1; host="example.com"'],
+  DNT: ["0", "1"],
+  Expect: ["100-continue"],
+  Forwarded: [
+    "for=192.0.2.1",
+    'for=192.0.2.1; proto=https; by=203.0.113.1; host="example.com"',
+  ],
   "Keep-Alive": ["timeout=5, max=100"],
-  "Origin": ["http://localhost:3000", "https://example.com"],
-  "Pragma": ["no-cache"],
-  "Range": ["bytes=0-1023"],
+  Origin: ["http://localhost:3000", "https://example.com"],
+  Pragma: ["no-cache"],
+  Range: ["bytes=0-1023"],
   "Sec-Fetch-Dest": ["document", "empty", "image", "script", "style", "font"],
   "Sec-Fetch-Mode": ["cors", "navigate", "no-cors", "same-origin", "websocket"],
   "Sec-Fetch-Site": ["same-origin", "same-site", "cross-site", "none"],
-  "TE": ["trailers", "compress", "deflate", "gzip"],
+  TE: ["trailers", "compress", "deflate", "gzip"],
   "Transfer-Encoding": ["chunked", "compress", "deflate", "gzip"],
-  "Upgrade": ["websocket", "h2c"],
+  Upgrade: ["websocket", "h2c"],
   "User-Agent": [
     "ReqResFlow/1.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -203,7 +201,13 @@ const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
   "X-XSS-Protection": ["0", "1", "1; mode=block"],
 };
 
-const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variables = [], headerMode = false, envName }) => {
+const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
+  pairs,
+  onChange,
+  variables = [],
+  headerMode = false,
+  envName,
+}) => {
   const updatePair = (
     index: number,
     field: keyof KeyValuePair,

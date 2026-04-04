@@ -137,7 +137,12 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   showFormatButton = false,
 }) => {
   const extensions = useMemo(
-    () => [baseTheme, ...(Array.isArray(getLanguageExtension(language)) ? [] : [getLanguageExtension(language)])],
+    () => [
+      baseTheme,
+      ...(Array.isArray(getLanguageExtension(language))
+        ? []
+        : [getLanguageExtension(language)]),
+    ],
     [language],
   );
 

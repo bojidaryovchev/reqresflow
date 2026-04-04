@@ -15,11 +15,11 @@ ReqResFlow is a **Postman-like HTTP request testing desktop app** built with Ele
 
 ## Commands
 
-| Action | Command |
-|--------|---------|
-| Run dev | `npm start` (or `electron-forge start`) |
-| Build installers | `npm run make` |
-| Lint | `npm run lint` |
+| Action           | Command                                 |
+| ---------------- | --------------------------------------- |
+| Run dev          | `npm start` (or `electron-forge start`) |
+| Build installers | `npm run make`                          |
+| Lint             | `npm run lint`                          |
 
 ## Architecture
 
@@ -43,10 +43,13 @@ src/
 ## Key Patterns
 
 ### IPC Communication
+
 All backend work goes through `window.electronAPI.*` (defined in `preload.ts`), which calls `ipcRenderer.invoke()` to the main process handlers in `main.ts`. Never use `require('electron')` in the renderer.
 
 ### Data Persistence
+
 JSON files in `{userData}/reqresflow-data/`:
+
 - `collections.json` — saved request collections
 - `environments.json` — environment variable sets
 - `history.json` — request history (max 100)
@@ -55,6 +58,7 @@ JSON files in `{userData}/reqresflow-data/`:
 IPC channels: `collections:load/save`, `environments:load/save`, `history:load/save`, `session:load/save`
 
 ### Tab System
+
 - Each `RequestTab` holds: method, url, params, headers, payloads, auth, captures, response, isDirty
 - Tabs use Framer Motion `<Reorder.Group>` for drag reorder
 - Opening a saved request ALWAYS creates a new tab (never reuses)
@@ -62,11 +66,13 @@ IPC channels: `collections:load/save`, `environments:load/save`, `history:load/s
 - Session auto-saves on every change
 
 ### Environment Variables
+
 - Syntax: `{{variableName}}` — substituted at request time in URL, params, headers, auth fields, body
 - Function: `substituteVars(text, variables)` in App.tsx
 - `AutoSuggestInput` shows dropdown of matching vars when typing `{{`
 
 ### Request Execution Flow
+
 1. Build URL with substituted `{{vars}}` + enabled query params
 2. Merge default headers + user headers + auth headers
 3. Build body based on bodyType (raw, form-data, x-www-form-urlencoded, graphql, binary)
@@ -74,13 +80,17 @@ IPC channels: `collections:load/save`, `environments:load/save`, `history:load/s
 5. Store response in tab, apply response captures, add to history
 
 ### Body Types
+
 `"none" | "form-data" | "x-www-form-urlencoded" | "raw" | "binary" | "graphql"`
 
 ### Auth Types
+
 `{ type: "none" } | { type: "bearer", token } | { type: "basic", username, password }`
 
 ### Response Captures
+
 Extract values from responses into environment variables:
+
 - Sources: `body` (JSON dot path like `data.token`), `header` (header name), `status`
 - Applied automatically after each request
 
@@ -98,12 +108,14 @@ Extract values from responses into environment variables:
 ## Common Tasks
 
 ### Adding a new IPC channel
+
 1. Add handler in `src/main.ts`: `ipcMain.handle("channel-name", async (_, args) => { ... })`
 2. Add binding in `src/preload.ts`: `channelName: (args) => ipcRenderer.invoke("channel-name", args)`
 3. Add type in `src/types/electron.d.ts` `ElectronAPI` interface
 4. Call via `window.electronAPI.channelName(args)` in renderer
 
 ### Adding a new request feature
+
 1. Add field to `RequestTab` type in `src/types/electron.ts`
 2. Update `createEmptyTab()` in `App.tsx` with default value
 3. Add UI controls in the appropriate request panel section of `App.tsx`
@@ -111,6 +123,7 @@ Extract values from responses into environment variables:
 5. Update session migration logic if needed (for backward compat with saved sessions)
 
 ### Adding a new component
+
 1. Create in `src/components/NewComponent.tsx`
 2. Import and use in `App.tsx`
 3. Pass state/callbacks as props from App.tsx — don't create independent state

@@ -14,7 +14,12 @@ export interface RequestConfig {
   headers: Record<string, string>;
   body?: string;
   bodyType?: BodyType;
-  formData?: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  formData?: {
+    enabled: boolean;
+    key: string;
+    value: string;
+    type: "text" | "file";
+  }[];
   rawLanguage?: RawLanguage;
   graphql?: { query: string; variables: string };
 }
@@ -34,7 +39,12 @@ export interface Payload {
   body: string;
   bodyType: BodyType;
   rawLanguage: RawLanguage;
-  formData: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  formData: {
+    enabled: boolean;
+    key: string;
+    value: string;
+    type: "text" | "file";
+  }[];
   graphql: { query: string; variables: string };
   binaryFilePath: string;
 }
@@ -62,7 +72,12 @@ export interface SavedRequest {
   body: string;
   bodyType?: BodyType;
   rawLanguage?: RawLanguage;
-  formData?: { enabled: boolean; key: string; value: string; type: "text" | "file" }[];
+  formData?: {
+    enabled: boolean;
+    key: string;
+    value: string;
+    type: "text" | "file";
+  }[];
   graphql?: { query: string; variables: string };
   binaryFilePath?: string;
   payloads?: Payload[];

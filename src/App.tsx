@@ -65,8 +65,15 @@ function tryPrettyJson(raw: string): string {
   }
 }
 
-function detectResponseLanguage(response: { headers: Record<string, string>; body: string }): RawLanguage {
-  const ct = (response.headers["content-type"] || response.headers["Content-Type"] || "").toLowerCase();
+function detectResponseLanguage(response: {
+  headers: Record<string, string>;
+  body: string;
+}): RawLanguage {
+  const ct = (
+    response.headers["content-type"] ||
+    response.headers["Content-Type"] ||
+    ""
+  ).toLowerCase();
   if (ct.includes("json")) return "json";
   if (ct.includes("xml")) return "xml";
   if (ct.includes("html")) return "html";
@@ -75,7 +82,8 @@ function detectResponseLanguage(response: { headers: Record<string, string>; bod
   const trimmed = response.body.trimStart();
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
   if (trimmed.startsWith("<?xml") || trimmed.startsWith("<rss")) return "xml";
-  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) return "html";
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html"))
+    return "html";
   return "text";
 }
 
@@ -159,7 +167,13 @@ interface TabItemProps {
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
-function TabItem({ tab, isActive, onActivate, onClose, onContextMenu }: TabItemProps) {
+function TabItem({
+  tab,
+  isActive,
+  onActivate,
+  onClose,
+  onContextMenu,
+}: TabItemProps) {
   const controls = useDragControls();
 
   return (
@@ -180,15 +194,16 @@ function TabItem({ tab, isActive, onActivate, onClose, onContextMenu }: TabItemP
         className="request-tab-method"
         style={{
           color:
-            METHOD_COLORS[tab.method as HttpMethod] ||
-            "var(--text-secondary)",
+            METHOD_COLORS[tab.method as HttpMethod] || "var(--text-secondary)",
         }}
       >
         {tab.method}
       </span>
       <span className="request-tab-name">{getTabDisplayName(tab)}</span>
       {tab.isDirty && (
-        <span className="request-tab-dirty" title="Unsaved changes">●</span>
+        <span className="request-tab-dirty" title="Unsaved changes">
+          ●
+        </span>
       )}
       <button
         className="request-tab-close"
@@ -227,7 +242,11 @@ const App: React.FC = () => {
   const [showSavePicker, setShowSavePicker] = useState(false);
 
   // Tab context menu
-  const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId: string;
+  } | null>(null);
   const tabContextMenuRef = useRef<HTMLDivElement>(null);
 
   const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
@@ -235,8 +254,17 @@ const App: React.FC = () => {
 
   // Fields that represent request config (not response/UI state)
   const REQUEST_FIELDS = new Set([
-    "method", "url", "params", "headers", "payloads", "activePayloadId",
-    "bodyType", "rawLanguage", "captures", "auth", "name",
+    "method",
+    "url",
+    "params",
+    "headers",
+    "payloads",
+    "activePayloadId",
+    "bodyType",
+    "rawLanguage",
+    "captures",
+    "auth",
+    "name",
   ]);
 
   // Helper to update the active tab
@@ -246,7 +274,9 @@ const App: React.FC = () => {
         prev.map((t) => {
           if (t.id !== id) return t;
           // Auto-set isDirty when request fields change
-          const touchesRequestField = Object.keys(updates).some((k) => REQUEST_FIELDS.has(k));
+          const touchesRequestField = Object.keys(updates).some((k) =>
+            REQUEST_FIELDS.has(k),
+          );
           const dirty = touchesRequestField ? { isDirty: true } : {};
           return { ...t, ...updates, ...dirty };
         }),
@@ -287,13 +317,19 @@ const App: React.FC = () => {
     setTabs((prev) => {
       const source = prev.find((t) => t.id === id);
       if (!source) return prev;
-      const newPayloads = source.payloads.map((p) => ({ ...p, id: generateId() }));
-      const activePayloadIdx = source.payloads.findIndex((p) => p.id === source.activePayloadId);
+      const newPayloads = source.payloads.map((p) => ({
+        ...p,
+        id: generateId(),
+      }));
+      const activePayloadIdx = source.payloads.findIndex(
+        (p) => p.id === source.activePayloadId,
+      );
       const dup: RequestTabType = {
         ...source,
         id: generateId(),
         payloads: newPayloads,
-        activePayloadId: newPayloads[activePayloadIdx >= 0 ? activePayloadIdx : 0].id,
+        activePayloadId:
+          newPayloads[activePayloadIdx >= 0 ? activePayloadIdx : 0].id,
         response: null,
         error: null,
         savedToCollectionId: null,
@@ -330,8 +366,8 @@ const App: React.FC = () => {
         // Migrate old session tabs that may be missing new fields
         const migratedTabs = session.tabs.map((t: RequestTabType) => ({
           ...t,
-          bodyType: t.bodyType || "none" as BodyType,
-          rawLanguage: t.rawLanguage || "json" as RawLanguage,
+          bodyType: t.bodyType || ("none" as BodyType),
+          rawLanguage: t.rawLanguage || ("json" as RawLanguage),
           captures: t.captures || [],
           auth: t.auth || { type: "none" as const },
           savedToCollectionId: t.savedToCollectionId ?? null,
@@ -339,9 +375,11 @@ const App: React.FC = () => {
           isDirty: t.isDirty ?? false,
           payloads: (t.payloads || []).map((p) => ({
             ...p,
-            bodyType: p.bodyType || "none" as BodyType,
-            rawLanguage: p.rawLanguage || "json" as RawLanguage,
-            formData: p.formData || [{ enabled: true, key: "", value: "", type: "text" as const }],
+            bodyType: p.bodyType || ("none" as BodyType),
+            rawLanguage: p.rawLanguage || ("json" as RawLanguage),
+            formData: p.formData || [
+              { enabled: true, key: "", value: "", type: "text" as const },
+            ],
             graphql: p.graphql || { query: "", variables: "" },
             binaryFilePath: p.binaryFilePath || "",
           })),
@@ -367,7 +405,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!tabContextMenu) return;
     const handleClick = (e: MouseEvent) => {
-      if (tabContextMenuRef.current && !tabContextMenuRef.current.contains(e.target as Node)) {
+      if (
+        tabContextMenuRef.current &&
+        !tabContextMenuRef.current.contains(e.target as Node)
+      ) {
         setTabContextMenu(null);
       }
     };
@@ -554,67 +595,77 @@ const App: React.FC = () => {
   }, [activeTab, body]);
 
   // Load a saved request into a new tab
-  const loadRequest = useCallback((req: SavedRequest, collectionId?: string, requestId?: string) => {
-    // If this request is already open in a tab, just focus it
-    if (collectionId && requestId) {
-      const existing = tabs.find(
-        (t) => t.savedToCollectionId === collectionId && t.savedRequestId === requestId
-      );
-      if (existing) {
-        setActiveTabId(existing.id);
-        return;
+  const loadRequest = useCallback(
+    (req: SavedRequest, collectionId?: string, requestId?: string) => {
+      // If this request is already open in a tab, just focus it
+      if (collectionId && requestId) {
+        const existing = tabs.find(
+          (t) =>
+            t.savedToCollectionId === collectionId &&
+            t.savedRequestId === requestId,
+        );
+        if (existing) {
+          setActiveTabId(existing.id);
+          return;
+        }
       }
-    }
 
-    const defaultPayload: Payload = {
-      id: generateId(),
-      name: "Default",
-      body: req.body,
-      bodyType: req.bodyType || "none",
-      rawLanguage: req.rawLanguage || "json",
-      formData: req.formData || [{ enabled: true, key: "", value: "", type: "text" }],
-      graphql: req.graphql || { query: "", variables: "" },
-      binaryFilePath: req.binaryFilePath || "",
-    };
-    const payloads =
-      req.payloads && req.payloads.length > 0
-        ? req.payloads.map((p) => ({
-            ...p,
-            bodyType: p.bodyType || req.bodyType || "none" as BodyType,
-            rawLanguage: p.rawLanguage || req.rawLanguage || "json" as RawLanguage,
-            formData: p.formData || [{ enabled: true, key: "", value: "", type: "text" as const }],
-            graphql: p.graphql || { query: "", variables: "" },
-            binaryFilePath: p.binaryFilePath || "",
-          }))
-        : [defaultPayload];
-    const newTab: RequestTabType = {
-      id: generateId(),
-      name: req.name,
-      method: req.method,
-      url: req.url,
-      params:
-        req.params.length > 0
-          ? req.params
-          : [{ enabled: true, key: "", value: "" }],
-      headers:
-        req.headers.length > 0
-          ? req.headers
-          : [{ enabled: true, key: "", value: "" }],
-      payloads,
-      activePayloadId: req.activePayloadId || payloads[0].id,
-      bodyType: req.bodyType || "none",
-      rawLanguage: req.rawLanguage || "json",
-      response: null,
-      error: null,
-      captures: req.captures || [],
-      auth: req.auth || { type: "none" },
-      savedToCollectionId: collectionId || null,
-      savedRequestId: requestId || null,
-      isDirty: false,
-    };
-    setTabs((prev) => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-  }, [tabs]);
+      const defaultPayload: Payload = {
+        id: generateId(),
+        name: "Default",
+        body: req.body,
+        bodyType: req.bodyType || "none",
+        rawLanguage: req.rawLanguage || "json",
+        formData: req.formData || [
+          { enabled: true, key: "", value: "", type: "text" },
+        ],
+        graphql: req.graphql || { query: "", variables: "" },
+        binaryFilePath: req.binaryFilePath || "",
+      };
+      const payloads =
+        req.payloads && req.payloads.length > 0
+          ? req.payloads.map((p) => ({
+              ...p,
+              bodyType: p.bodyType || req.bodyType || ("none" as BodyType),
+              rawLanguage:
+                p.rawLanguage || req.rawLanguage || ("json" as RawLanguage),
+              formData: p.formData || [
+                { enabled: true, key: "", value: "", type: "text" as const },
+              ],
+              graphql: p.graphql || { query: "", variables: "" },
+              binaryFilePath: p.binaryFilePath || "",
+            }))
+          : [defaultPayload];
+      const newTab: RequestTabType = {
+        id: generateId(),
+        name: req.name,
+        method: req.method,
+        url: req.url,
+        params:
+          req.params.length > 0
+            ? req.params
+            : [{ enabled: true, key: "", value: "" }],
+        headers:
+          req.headers.length > 0
+            ? req.headers
+            : [{ enabled: true, key: "", value: "" }],
+        payloads,
+        activePayloadId: req.activePayloadId || payloads[0].id,
+        bodyType: req.bodyType || "none",
+        rawLanguage: req.rawLanguage || "json",
+        response: null,
+        error: null,
+        captures: req.captures || [],
+        auth: req.auth || { type: "none" },
+        savedToCollectionId: collectionId || null,
+        savedRequestId: requestId || null,
+        isDirty: false,
+      };
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newTab.id);
+    },
+    [tabs],
+  );
 
   // Load a history entry into a new tab
   const loadHistoryEntry = useCallback(
@@ -655,35 +706,41 @@ const App: React.FC = () => {
     window.electronAPI.saveCollections(updated);
     // Mark tab as clean
     setTabs((prev) =>
-      prev.map((t) =>
-        t.id === tab.id ? { ...t, isDirty: false } : t,
-      ),
+      prev.map((t) => (t.id === tab.id ? { ...t, isDirty: false } : t)),
     );
   }, [activeTab, collections, getCurrentRequest]);
 
   // Save to a specific collection (for the picker)
-  const saveToPickedCollection = useCallback((collectionId: string) => {
-    const request = getCurrentRequest();
-    const newRequestId = generateId();
-    const updated = collections.map((c) => {
-      if (c.id !== collectionId) return c;
-      return {
-        ...c,
-        requests: [...c.requests, { ...request, id: newRequestId }],
-      };
-    });
-    setCollections(updated);
-    window.electronAPI.saveCollections(updated);
-    // Link the tab to this saved request
-    setTabs((prev) =>
-      prev.map((t) =>
-        t.id === activeTab.id
-          ? { ...t, savedToCollectionId: collectionId, savedRequestId: newRequestId, isDirty: false }
-          : t,
-      ),
-    );
-    setShowSavePicker(false);
-  }, [activeTab, collections, getCurrentRequest]);
+  const saveToPickedCollection = useCallback(
+    (collectionId: string) => {
+      const request = getCurrentRequest();
+      const newRequestId = generateId();
+      const updated = collections.map((c) => {
+        if (c.id !== collectionId) return c;
+        return {
+          ...c,
+          requests: [...c.requests, { ...request, id: newRequestId }],
+        };
+      });
+      setCollections(updated);
+      window.electronAPI.saveCollections(updated);
+      // Link the tab to this saved request
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === activeTab.id
+            ? {
+                ...t,
+                savedToCollectionId: collectionId,
+                savedRequestId: newRequestId,
+                isDirty: false,
+              }
+            : t,
+        ),
+      );
+      setShowSavePicker(false);
+    },
+    [activeTab, collections, getCurrentRequest],
+  );
 
   // Ctrl+S / Cmd+S to save
   useEffect(() => {
@@ -737,15 +794,20 @@ const App: React.FC = () => {
     // Apply auth
     const auth = activeTab.auth;
     if (auth.type === "bearer" && auth.token.trim()) {
-      headerObj["Authorization"] = `Bearer ${substituteVars(auth.token.trim(), vars)}`;
-    } else if (auth.type === "basic" && (auth.username.trim() || auth.password.trim())) {
+      headerObj["Authorization"] =
+        `Bearer ${substituteVars(auth.token.trim(), vars)}`;
+    } else if (
+      auth.type === "basic" &&
+      (auth.username.trim() || auth.password.trim())
+    ) {
       const user = substituteVars(auth.username, vars);
       const pass = substituteVars(auth.password, vars);
       headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
     }
 
     const resolvedBody = (() => {
-      if (!["POST", "PUT", "PATCH"].includes(activeTab.method)) return undefined;
+      if (!["POST", "PUT", "PATCH"].includes(activeTab.method))
+        return undefined;
       const bt = activeTab.bodyType;
       if (bt === "none") return undefined;
       if (bt === "raw") return substituteVars(body, vars);
@@ -755,13 +817,18 @@ const App: React.FC = () => {
           ? substituteVars(activePayload.graphql.variables, vars)
           : undefined;
         try {
-          return JSON.stringify({ query: q, variables: v ? JSON.parse(v) : undefined });
+          return JSON.stringify({
+            query: q,
+            variables: v ? JSON.parse(v) : undefined,
+          });
         } catch {
           return JSON.stringify({ query: q, variables: v });
         }
       }
       if (bt === "x-www-form-urlencoded" && activePayload) {
-        const pairs = activePayload.formData.filter((f) => f.enabled && f.key.trim());
+        const pairs = activePayload.formData.filter(
+          (f) => f.enabled && f.key.trim(),
+        );
         return pairs
           .map(
             (f) =>
@@ -772,7 +839,9 @@ const App: React.FC = () => {
       if (bt === "form-data" && activePayload) {
         // For form-data we build a multipart boundary manually (text fields only)
         const boundary = `----ReqResFlow${Date.now()}`;
-        const pairs = activePayload.formData.filter((f) => f.enabled && f.key.trim());
+        const pairs = activePayload.formData.filter(
+          (f) => f.enabled && f.key.trim(),
+        );
         let multipart = "";
         for (const f of pairs) {
           multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
@@ -801,7 +870,8 @@ const App: React.FC = () => {
           html: "text/html",
           javascript: "application/javascript",
         };
-        headerObj["Content-Type"] = langMap[activeTab.rawLanguage] || "text/plain";
+        headerObj["Content-Type"] =
+          langMap[activeTab.rawLanguage] || "text/plain";
       } else if (bt === "x-www-form-urlencoded") {
         headerObj["Content-Type"] = "application/x-www-form-urlencoded";
       } else if (bt === "graphql") {
@@ -895,7 +965,11 @@ const App: React.FC = () => {
                   onClose={() => closeTab(tab.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    setTabContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
+                    setTabContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      tabId: tab.id,
+                    });
                   }}
                 />
               ))}
@@ -1018,7 +1092,13 @@ const App: React.FC = () => {
           <div className="request-section">
             <div className="tabs">
               {(
-                ["params", "headers", "body", "auth", "captures"] as RequestPanel[]
+                [
+                  "params",
+                  "headers",
+                  "body",
+                  "auth",
+                  "captures",
+                ] as RequestPanel[]
               ).map((tab) => (
                 <button
                   key={tab}
@@ -1373,14 +1453,14 @@ const App: React.FC = () => {
                           })
                         }
                         language="javascript"
-                        placeholder={"query {\n  users {\n    id\n    name\n  }\n}"}
+                        placeholder={
+                          "query {\n  users {\n    id\n    name\n  }\n}"
+                        }
                         className="graphql-query"
                       />
                     </div>
                     <div className="graphql-section">
-                      <label className="graphql-label">
-                        Variables (JSON)
-                      </label>
+                      <label className="graphql-label">Variables (JSON)</label>
                       <CodeEditor
                         value={activePayload.graphql.variables}
                         onChange={(val) =>
@@ -1472,7 +1552,10 @@ const App: React.FC = () => {
                             auth: {
                               type: "basic",
                               username: v,
-                              password: activeTab.auth.type === "basic" ? activeTab.auth.password : "",
+                              password:
+                                activeTab.auth.type === "basic"
+                                  ? activeTab.auth.password
+                                  : "",
                             },
                           })
                         }
@@ -1491,7 +1574,10 @@ const App: React.FC = () => {
                           updateTab(activeTab.id, {
                             auth: {
                               type: "basic",
-                              username: activeTab.auth.type === "basic" ? activeTab.auth.username : "",
+                              username:
+                                activeTab.auth.type === "basic"
+                                  ? activeTab.auth.username
+                                  : "",
                               password: v,
                             },
                           })
@@ -1501,7 +1587,8 @@ const App: React.FC = () => {
                       />
                     </div>
                     <div className="auth-info">
-                      Will send as: Authorization: Basic base64(username:password)
+                      Will send as: Authorization: Basic
+                      base64(username:password)
                     </div>
                   </div>
                 )}
@@ -1666,7 +1753,10 @@ const App: React.FC = () => {
       {/* Save to Collection Picker Modal */}
       {showSavePicker && (
         <div className="modal-overlay" onClick={() => setShowSavePicker(false)}>
-          <div className="save-picker-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="save-picker-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="save-picker-header">
               <span className="save-picker-title">Save to Collection</span>
               <button
@@ -1689,9 +1779,12 @@ const App: React.FC = () => {
                       className="save-picker-item"
                       onClick={() => saveToPickedCollection(c.id)}
                     >
-                      <span className="save-picker-collection-name">{c.name}</span>
+                      <span className="save-picker-collection-name">
+                        {c.name}
+                      </span>
                       <span className="save-picker-collection-count">
-                        {c.requests.length} request{c.requests.length !== 1 ? "s" : ""}
+                        {c.requests.length} request
+                        {c.requests.length !== 1 ? "s" : ""}
                       </span>
                     </button>
                   ))}

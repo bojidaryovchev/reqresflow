@@ -2,12 +2,15 @@
 description: "Use when modifying type definitions, adding new fields to request tabs, collections, environments, or any data model changes."
 applyTo: src/types/electron.ts, src/types/electron.d.ts
 ---
+
 # Type Definitions
 
 ## Source of Truth
+
 `src/types/electron.ts` is the canonical type file. `electron.d.ts` has legacy stubs and the `ElectronAPI` interface.
 
 ## Key Types
+
 - `BodyType`: `"none" | "form-data" | "x-www-form-urlencoded" | "raw" | "binary" | "graphql"`
 - `RawLanguage`: `"json" | "text" | "xml" | "html" | "javascript"`
 - `AuthConfig`: `{ type: "none" } | { type: "bearer"; token } | { type: "basic"; username; password }`
@@ -21,6 +24,7 @@ applyTo: src/types/electron.ts, src/types/electron.d.ts
 - `SessionState`: `{ tabs, activeTabId, activeEnvId }`
 
 ## When Adding a New Field to RequestTab
+
 1. Add to `RequestTab` interface in `electron.ts`
 2. Add to `SavedRequest` if it should be persisted in collections
 3. Update `createEmptyTab()` in App.tsx with a default value
