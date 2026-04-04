@@ -1,26 +1,30 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld('electronAPI', {
+contextBridge.exposeInMainWorld("electronAPI", {
   sendRequest: (config: {
     method: string;
     url: string;
     headers: Record<string, string>;
     body?: string;
-  }) => ipcRenderer.invoke('send-request', config),
+  }) => ipcRenderer.invoke("send-request", config),
 
   // Collections
-  loadCollections: () => ipcRenderer.invoke('collections:load'),
-  saveCollections: (collections: unknown) => ipcRenderer.invoke('collections:save', collections),
+  loadCollections: () => ipcRenderer.invoke("collections:load"),
+  saveCollections: (collections: unknown) =>
+    ipcRenderer.invoke("collections:save", collections),
 
   // Environments
-  loadEnvironments: () => ipcRenderer.invoke('environments:load'),
-  saveEnvironments: (environments: unknown) => ipcRenderer.invoke('environments:save', environments),
+  loadEnvironments: () => ipcRenderer.invoke("environments:load"),
+  saveEnvironments: (environments: unknown) =>
+    ipcRenderer.invoke("environments:save", environments),
 
   // History
-  loadHistory: () => ipcRenderer.invoke('history:load'),
-  saveHistory: (history: unknown) => ipcRenderer.invoke('history:save', history),
+  loadHistory: () => ipcRenderer.invoke("history:load"),
+  saveHistory: (history: unknown) =>
+    ipcRenderer.invoke("history:save", history),
 
   // Session
-  loadSession: () => ipcRenderer.invoke('session:load'),
-  saveSession: (session: unknown) => ipcRenderer.invoke('session:save', session),
+  loadSession: () => ipcRenderer.invoke("session:load"),
+  saveSession: (session: unknown) =>
+    ipcRenderer.invoke("session:save", session),
 });

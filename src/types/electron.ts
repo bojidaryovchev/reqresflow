@@ -20,6 +20,14 @@ export interface Payload {
   body: string;
 }
 
+export interface ResponseCapture {
+  id: string;
+  enabled: boolean;
+  varName: string;
+  source: "body" | "header" | "status";
+  path: string; // JSONPath-like dot notation for body, header name for header, empty for status
+}
+
 export interface SavedRequest {
   id: string;
   name: string;
@@ -30,6 +38,7 @@ export interface SavedRequest {
   body: string;
   payloads?: Payload[];
   activePayloadId?: string | null;
+  captures?: ResponseCapture[];
 }
 
 export interface Collection {
@@ -72,6 +81,7 @@ export interface RequestTab {
   activePayloadId: string;
   response: ResponseData | null;
   error: string | null;
+  captures: ResponseCapture[];
 }
 
 declare global {

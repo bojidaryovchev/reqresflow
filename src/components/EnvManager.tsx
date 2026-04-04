@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Environment } from '../types/electron';
+import React, { useState } from "react";
+import { Environment } from "../types/electron";
 
 interface EnvManagerProps {
   environments: Environment[];
@@ -11,9 +11,13 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsChange, onClose }) => {
+const EnvManager: React.FC<EnvManagerProps> = ({
+  environments,
+  onEnvironmentsChange,
+  onClose,
+}) => {
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(
-    environments.length > 0 ? environments[0].id : null
+    environments.length > 0 ? environments[0].id : null,
   );
 
   const selectedEnv = environments.find((e) => e.id === selectedEnvId) || null;
@@ -21,8 +25,8 @@ const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsCha
   const addEnvironment = () => {
     const newEnv: Environment = {
       id: generateId(),
-      name: 'New Environment',
-      variables: [{ key: '', value: '' }],
+      name: "New Environment",
+      variables: [{ key: "", value: "" }],
     };
     const updated = [...environments, newEnv];
     onEnvironmentsChange(updated);
@@ -38,28 +42,47 @@ const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsCha
   };
 
   const updateEnvName = (id: string, name: string) => {
-    onEnvironmentsChange(environments.map((e) => (e.id === id ? { ...e, name } : e)));
+    onEnvironmentsChange(
+      environments.map((e) => (e.id === id ? { ...e, name } : e)),
+    );
   };
 
-  const updateVariables = (envId: string, variables: { key: string; value: string }[]) => {
-    onEnvironmentsChange(environments.map((e) => (e.id === envId ? { ...e, variables } : e)));
+  const updateVariables = (
+    envId: string,
+    variables: { key: string; value: string }[],
+  ) => {
+    onEnvironmentsChange(
+      environments.map((e) => (e.id === envId ? { ...e, variables } : e)),
+    );
   };
 
   const addVariable = () => {
     if (!selectedEnv) return;
-    updateVariables(selectedEnv.id, [...selectedEnv.variables, { key: '', value: '' }]);
+    updateVariables(selectedEnv.id, [
+      ...selectedEnv.variables,
+      { key: "", value: "" },
+    ]);
   };
 
   const removeVariable = (index: number) => {
     if (!selectedEnv) return;
-    updateVariables(selectedEnv.id, selectedEnv.variables.filter((_, i) => i !== index));
+    updateVariables(
+      selectedEnv.id,
+      selectedEnv.variables.filter((_, i) => i !== index),
+    );
   };
 
-  const updateVariable = (index: number, field: 'key' | 'value', val: string) => {
+  const updateVariable = (
+    index: number,
+    field: "key" | "value",
+    val: string,
+  ) => {
     if (!selectedEnv) return;
     updateVariables(
       selectedEnv.id,
-      selectedEnv.variables.map((v, i) => (i === index ? { ...v, [field]: val } : v))
+      selectedEnv.variables.map((v, i) =>
+        i === index ? { ...v, [field]: val } : v,
+      ),
     );
   };
 
@@ -68,24 +91,35 @@ const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsCha
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Manage Environments</h2>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+          <button className="modal-close-btn" onClick={onClose}>
+            ×
+          </button>
         </div>
         <div className="env-manager-body">
           <div className="env-list">
             <div className="env-list-header">
               <span>Environments</span>
-              <button className="sidebar-icon-btn" onClick={addEnvironment} title="Add environment">+</button>
+              <button
+                className="sidebar-icon-btn"
+                onClick={addEnvironment}
+                title="Add environment"
+              >
+                +
+              </button>
             </div>
             {environments.map((env) => (
               <div
                 key={env.id}
-                className={`env-list-item ${env.id === selectedEnvId ? 'active' : ''}`}
+                className={`env-list-item ${env.id === selectedEnvId ? "active" : ""}`}
                 onClick={() => setSelectedEnvId(env.id)}
               >
                 <span>{env.name}</span>
                 <button
                   className="sidebar-icon-btn danger"
-                  onClick={(e) => { e.stopPropagation(); deleteEnvironment(env.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteEnvironment(env.id);
+                  }}
                   title="Delete"
                 >
                   ×
@@ -101,7 +135,9 @@ const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsCha
                   <input
                     type="text"
                     value={selectedEnv.name}
-                    onChange={(e) => updateEnvName(selectedEnv.id, e.target.value)}
+                    onChange={(e) =>
+                      updateEnvName(selectedEnv.id, e.target.value)
+                    }
                     className="env-name-input"
                   />
                 </div>
@@ -117,22 +153,35 @@ const EnvManager: React.FC<EnvManagerProps> = ({ environments, onEnvironmentsCha
                         type="text"
                         placeholder="VARIABLE_NAME"
                         value={v.key}
-                        onChange={(e) => updateVariable(i, 'key', e.target.value)}
+                        onChange={(e) =>
+                          updateVariable(i, "key", e.target.value)
+                        }
                       />
                       <input
                         type="text"
                         placeholder="value"
                         value={v.value}
-                        onChange={(e) => updateVariable(i, 'value', e.target.value)}
+                        onChange={(e) =>
+                          updateVariable(i, "value", e.target.value)
+                        }
                       />
-                      <button className="kv-remove-btn" onClick={() => removeVariable(i)}>×</button>
+                      <button
+                        className="kv-remove-btn"
+                        onClick={() => removeVariable(i)}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
-                <button className="kv-add-btn" onClick={addVariable}>+ Add Variable</button>
+                <button className="kv-add-btn" onClick={addVariable}>
+                  + Add Variable
+                </button>
               </>
             ) : (
-              <div className="env-detail-empty">Select or create an environment</div>
+              <div className="env-detail-empty">
+                Select or create an environment
+              </div>
             )}
           </div>
         </div>

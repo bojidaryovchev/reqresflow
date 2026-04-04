@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export interface KeyValuePair {
   enabled: boolean;
@@ -12,8 +12,14 @@ interface KeyValueEditorProps {
 }
 
 const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange }) => {
-  const updatePair = (index: number, field: keyof KeyValuePair, value: string | boolean) => {
-    const updated = pairs.map((p, i) => (i === index ? { ...p, [field]: value } : p));
+  const updatePair = (
+    index: number,
+    field: keyof KeyValuePair,
+    value: string | boolean,
+  ) => {
+    const updated = pairs.map((p, i) =>
+      i === index ? { ...p, [field]: value } : p,
+    );
     onChange(updated);
   };
 
@@ -22,7 +28,7 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange }) => {
   };
 
   const addPair = () => {
-    onChange([...pairs, { enabled: true, key: '', value: '' }]);
+    onChange([...pairs, { enabled: true, key: "", value: "" }]);
   };
 
   return (
@@ -32,26 +38,32 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange }) => {
           <input
             type="checkbox"
             checked={pair.enabled}
-            onChange={(e) => updatePair(i, 'enabled', e.target.checked)}
+            onChange={(e) => updatePair(i, "enabled", e.target.checked)}
           />
           <input
             type="text"
             placeholder="Key"
             value={pair.key}
-            onChange={(e) => updatePair(i, 'key', e.target.value)}
+            onChange={(e) => updatePair(i, "key", e.target.value)}
           />
           <input
             type="text"
             placeholder="Value"
             value={pair.value}
-            onChange={(e) => updatePair(i, 'value', e.target.value)}
+            onChange={(e) => updatePair(i, "value", e.target.value)}
           />
-          <button className="kv-remove-btn" onClick={() => removePair(i)} title="Remove">
+          <button
+            className="kv-remove-btn"
+            onClick={() => removePair(i)}
+            title="Remove"
+          >
             ×
           </button>
         </div>
       ))}
-      <button className="kv-add-btn" onClick={addPair}>+ Add</button>
+      <button className="kv-add-btn" onClick={addPair}>
+        + Add
+      </button>
     </div>
   );
 };
