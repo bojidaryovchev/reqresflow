@@ -14,6 +14,12 @@ export interface ResponseData {
   size: number;
 }
 
+export interface Payload {
+  id: string;
+  name: string;
+  body: string;
+}
+
 export interface SavedRequest {
   id: string;
   name: string;
@@ -22,6 +28,8 @@ export interface SavedRequest {
   params: { enabled: boolean; key: string; value: string }[];
   headers: { enabled: boolean; key: string; value: string }[];
   body: string;
+  payloads?: Payload[];
+  activePayloadId?: string | null;
 }
 
 export interface Collection {

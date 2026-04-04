@@ -2,11 +2,15 @@ import React, { useState, useCallback, useEffect } from 'react';
 import KeyValueEditor, { KeyValuePair } from './components/KeyValueEditor';
 import Sidebar from './components/Sidebar';
 import EnvManager from './components/EnvManager';
-import { Collection, Environment, SavedRequest } from './types/electron';
+import { Collection, Environment, SavedRequest, Payload } from './types/electron';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type RequestTab = 'params' | 'headers' | 'body';
 type ResponseTab = 'body' | 'headers';
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 interface ResponseData {
   status: number;
@@ -59,7 +63,8 @@ const App: React.FC = () => {
   const [url, setUrl] = useState('');
   const [params, setParams] = useState<KeyValuePair[]>([{ enabled: true, key: '', value: '' }]);
   const [headers, setHeaders] = useState<KeyValuePair[]>([{ enabled: true, key: '', value: '' }]);
-  const [body, setBody] = useState('');
+  const [payloads, setPayloads] = useState<Payload[]>([{ id: generateId(), name: 'Default', body: '' }]);
+  const [activePayloadId, setActivePayloadId] = useState<string>(payloads[0].id);
   const [requestTab, setRequestTab] = useState<RequestTab>('params');
   const [responseTab, setResponseTab] = useState<ResponseTab>('body');
   const [response, setResponse] = useState<ResponseData | null>(null);
@@ -101,6 +106,31 @@ const App: React.FC = () => {
     }
   }, [activeEnvId]);
 
+  // Active payload helpers
+  const activePayload = payloads.find((p) => p.id === activePayloadId) || payloads[0];
+  const body = activePayload?.body || '';
+
+  const updatePayloadBody = (value: string) => {
+    setPayloads((prev) => prev.map((p) => (p.id === activePayloadId ? { ...p, body: value } : p)));
+  };
+
+  const addPayload = () => {
+    const newPayload: Payload = { id: generateId(), name: `Payload ${payloads.length + 1}`, body: '' };
+    setPayloads((prev) => [...prev, newPayload]);
+    setActivePayloadId(newPayload.id);
+  };
+
+  const removePayload = (id: string) => {
+    if (payloads.length <= 1) return;
+    const updated = payloads.filter((p) => p.id !== id);
+    setPayloads(updated);
+    if (activePayloadId === id) setActivePayloadId(updated[0].id);
+  };
+
+  const renamePayload = (id: string, name: string) => {
+    setPayloads((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
+  };
+
   // Get current request state as a SavedRequest
   const getCurrentRequest = useCallback((): SavedRequest => {
     return {
@@ -111,8 +141,10 @@ const App: React.FC = () => {
       params,
       headers,
       body,
+      payloads,
+      activePayloadId,
     };
-  }, [method, url, params, headers, body]);
+  }, [method, url, params, headers, body, payloads, activePayloadId]);
 
   // Load a saved request into the editor
   const loadRequest = useCallback((req: SavedRequest) => {
@@ -120,7 +152,14 @@ const App: React.FC = () => {
     setUrl(req.url);
     setParams(req.params.length > 0 ? req.params : [{ enabled: true, key: '', value: '' }]);
     setHeaders(req.headers.length > 0 ? req.headers : [{ enabled: true, key: '', value: '' }]);
-    setBody(req.body);
+    if (req.payloads && req.payloads.length > 0) {
+      setPayloads(req.payloads);
+      setActivePayloadId(req.activePayloadId || req.payloads[0].id);
+    } else {
+      const defaultPayload: Payload = { id: generateId(), name: 'Default', body: req.body };
+      setPayloads([defaultPayload]);
+      setActivePayloadId(defaultPayload.id);
+    }
     setResponse(null);
     setError(null);
   }, []);
@@ -248,11 +287,41 @@ const App: React.FC = () => {
             )}
             {requestTab === 'body' && (
               <div className="body-editor">
+                <div className="payload-bar">
+                  <div className="payload-tabs">
+                    {payloads.map((p) => (
+                      <div
+                        key={p.id}
+                        className={`payload-tab ${p.id === activePayloadId ? 'active' : ''}`}
+                        onClick={() => setActivePayloadId(p.id)}
+                      >
+                        <span className="payload-tab-name">{p.name}</span>
+                        {payloads.length > 1 && (
+                          <button
+                            className="payload-tab-close"
+                            onClick={(e) => { e.stopPropagation(); removePayload(p.id); }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button className="payload-add-btn" onClick={addPayload} title="Add payload variant">+</button>
+                  </div>
+                  {activePayload && (
+                    <input
+                      className="payload-rename-input"
+                      value={activePayload.name}
+                      onChange={(e) => renamePayload(activePayload.id, e.target.value)}
+                      title="Rename payload"
+                    />
+                  )}
+                </div>
                 <textarea
                   className="body-textarea"
                   placeholder='{"key": "value"}'
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={(e) => updatePayloadBody(e.target.value)}
                   spellCheck={false}
                 />
               </div>
