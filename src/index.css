@@ -776,6 +776,59 @@ button {
   background: rgba(229, 192, 123, 0.12);
   border-radius: 3px;
   padding: 0 1px;
+  pointer-events: auto;
+  cursor: default;
+}
+
+/* Env var hover tooltip */
+.env-var-tooltip {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  margin-top: -6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 8px 12px;
+  z-index: 10001;
+  font-size: 12px;
+  min-width: 180px;
+  max-width: 340px;
+  pointer-events: auto;
+}
+
+.env-var-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.env-var-tooltip-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.env-var-tooltip-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.env-var-tooltip-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.env-var-tooltip-warning {
+  color: #f0ad4e;
+  font-size: 11px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
 }
 
 .autosuggest-dropdown {

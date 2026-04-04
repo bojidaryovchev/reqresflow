@@ -13,6 +13,8 @@ interface KeyValueEditorProps {
   variables?: { key: string; value: string }[];
   /** When true, show HTTP header name/value autocomplete */
   headerMode?: boolean;
+  /** Name of the active environment (shown in hover tooltip) */
+  envName?: string;
 }
 
 const HTTP_HEADER_NAMES = [
@@ -201,7 +203,7 @@ const HEADER_VALUE_SUGGESTIONS: Record<string, string[]> = {
   "X-XSS-Protection": ["0", "1", "1; mode=block"],
 };
 
-const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variables = [], headerMode = false }) => {
+const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variables = [], headerMode = false, envName }) => {
   const updatePair = (
     index: number,
     field: keyof KeyValuePair,
@@ -252,6 +254,7 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variab
             onValueChange={(v) => updatePair(i, "key", v)}
             variables={variables}
             suggestions={keySuggestions}
+            envName={envName}
           />
           <AutoSuggestInput
             type="text"
@@ -260,6 +263,7 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variab
             onValueChange={(v) => updatePair(i, "value", v)}
             variables={variables}
             suggestions={getValueSuggestions(pair.key)}
+            envName={envName}
           />
           <button
             className="kv-remove-btn"

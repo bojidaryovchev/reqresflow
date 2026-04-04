@@ -8,6 +8,8 @@ interface AutoSuggestInputProps
   value: string;
   /** Plain-text suggestions (e.g. header names). Shown when not inside {{ }} */
   suggestions?: string[];
+  /** Name of the active environment (shown in hover tooltip) */
+  envName?: string;
 }
 
 const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
@@ -15,6 +17,7 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
   onValueChange,
   value,
   suggestions,
+  envName,
   ...inputProps
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -24,6 +27,8 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
   /** "variables" = {{env}} mode, "suggestions" = plain autocomplete mode */
   const [suggestMode, setSuggestMode] = useState<"variables" | "suggestions">("variables");
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [hoverVar, setHoverVar] = useState<{ key: string; value: string; top: number; left: number } | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -216,6 +221,22 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
     }
   }, []);
 
+  const handleVarMouseEnter = useCallback((e: React.MouseEvent<HTMLSpanElement>, varName: string) => {
+    clearTimeout(hoverTimeoutRef.current);
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const resolved = variables.find((v) => v.key === varName);
+    setHoverVar({
+      key: varName,
+      value: resolved?.value ?? "",
+      top: rect.top,
+      left: rect.left + rect.width / 2,
+    });
+  }, [variables]);
+
+  const handleVarMouseLeave = useCallback(() => {
+    hoverTimeoutRef.current = setTimeout(() => setHoverVar(null), 150);
+  }, []);
+
   // Strip out props we handle ourselves so they don't conflict
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onKeyDown: _ok, onBlur: _ob, onChange: _oc, ...rest } = inputProps;
@@ -226,7 +247,14 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
         <div className="autosuggest-highlight" ref={highlightRef} aria-hidden>
           {highlightedParts.map((part, i) =>
             part.isVar ? (
-              <span key={i} className="env-var-highlight">{part.text}</span>
+              <span
+                key={i}
+                className="env-var-highlight"
+                onMouseEnter={(e) => handleVarMouseEnter(e, part.text.slice(2, -2))}
+                onMouseLeave={handleVarMouseLeave}
+              >
+                {part.text}
+              </span>
             ) : (
               <span key={i}>{part.text}</span>
             ),
@@ -242,6 +270,33 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
         onBlur={handleBlur}
         onScroll={handleScroll}
       />
+      {hoverVar && createPortal(
+        <div
+          className="env-var-tooltip"
+          style={{ top: hoverVar.top, left: hoverVar.left }}
+          onMouseEnter={() => clearTimeout(hoverTimeoutRef.current)}
+          onMouseLeave={handleVarMouseLeave}
+        >
+          <div className="env-var-tooltip-row">
+            <span className="env-var-tooltip-label">Variable</span>
+            <span className="env-var-tooltip-val">{hoverVar.key}</span>
+          </div>
+          <div className="env-var-tooltip-row">
+            <span className="env-var-tooltip-label">Value</span>
+            <span className="env-var-tooltip-val">{hoverVar.value || <span className="env-var-tooltip-empty">empty</span>}</span>
+          </div>
+          {envName && (
+            <div className="env-var-tooltip-row">
+              <span className="env-var-tooltip-label">Environment</span>
+              <span className="env-var-tooltip-val">{envName}</span>
+            </div>
+          )}
+          {!variables.find((v) => v.key === hoverVar.key) && (
+            <div className="env-var-tooltip-warning">Variable not defined in current environment</div>
+          )}
+        </div>,
+        document.body,
+      )}
       {showSuggestions && activeList.length > 0 && createPortal(
         <div
           className="autosuggest-dropdown"
