@@ -1,4 +1,5 @@
 import React from "react";
+import AutoSuggestInput from "./AutoSuggestInput";
 
 export interface KeyValuePair {
   enabled: boolean;
@@ -9,9 +10,10 @@ export interface KeyValuePair {
 interface KeyValueEditorProps {
   pairs: KeyValuePair[];
   onChange: (pairs: KeyValuePair[]) => void;
+  variables?: { key: string; value: string }[];
 }
 
-const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange }) => {
+const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange, variables = [] }) => {
   const updatePair = (
     index: number,
     field: keyof KeyValuePair,
@@ -40,17 +42,19 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({ pairs, onChange }) => {
             checked={pair.enabled}
             onChange={(e) => updatePair(i, "enabled", e.target.checked)}
           />
-          <input
+          <AutoSuggestInput
             type="text"
             placeholder="Key"
             value={pair.key}
-            onChange={(e) => updatePair(i, "key", e.target.value)}
+            onValueChange={(v) => updatePair(i, "key", v)}
+            variables={variables}
           />
-          <input
+          <AutoSuggestInput
             type="text"
             placeholder="Value"
             value={pair.value}
-            onChange={(e) => updatePair(i, "value", e.target.value)}
+            onValueChange={(v) => updatePair(i, "value", v)}
+            variables={variables}
           />
           <button
             className="kv-remove-btn"

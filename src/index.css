@@ -411,6 +411,64 @@ button {
   border-color: var(--accent);
 }
 
+/* ── AutoSuggest Input ── */
+.autosuggest-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+.autosuggest-wrapper > input {
+  width: 100%;
+}
+
+.autosuggest-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  margin-top: 2px;
+}
+
+.autosuggest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  gap: 12px;
+}
+
+.autosuggest-item:hover,
+.autosuggest-item.selected {
+  background: var(--bg-hover);
+}
+
+.autosuggest-var-name {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.autosuggest-var-value {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
 /* ── Auth Editor ── */
 .auth-editor {
   flex: 1;

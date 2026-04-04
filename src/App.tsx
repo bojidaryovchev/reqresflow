@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import AutoSuggestInput from "./components/AutoSuggestInput";
 import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
 import Sidebar from "./components/Sidebar";
@@ -606,12 +607,13 @@ const App: React.FC = () => {
               ),
             )}
           </select>
-          <input
+          <AutoSuggestInput
             className="url-input"
             type="text"
             placeholder="Enter request URL..."
             value={activeTab.url}
-            onChange={(e) => updateTab(activeTab.id, { url: e.target.value })}
+            onValueChange={(v) => updateTab(activeTab.id, { url: v })}
+            variables={activeEnv?.variables ?? []}
             onKeyDown={handleKeyDown}
           />
           <button
@@ -652,12 +654,14 @@ const App: React.FC = () => {
               <KeyValueEditor
                 pairs={activeTab.params}
                 onChange={(p) => updateTab(activeTab.id, { params: p })}
+                variables={activeEnv?.variables ?? []}
               />
             )}
             {requestPanel === "headers" && (
               <KeyValueEditor
                 pairs={activeTab.headers}
                 onChange={(h) => updateTab(activeTab.id, { headers: h })}
+                variables={activeEnv?.variables ?? []}
               />
             )}
             {requestPanel === "body" && (
@@ -745,16 +749,17 @@ const App: React.FC = () => {
                   <div className="auth-fields">
                     <div className="auth-field">
                       <label className="auth-label">Token</label>
-                      <input
+                      <AutoSuggestInput
                         className="auth-input"
                         type="text"
                         placeholder="{{token}} or paste token"
                         value={activeTab.auth.token}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           updateTab(activeTab.id, {
-                            auth: { type: "bearer", token: e.target.value },
+                            auth: { type: "bearer", token: v },
                           })
                         }
+                        variables={activeEnv?.variables ?? []}
                       />
                     </div>
                     <div className="auth-info">
@@ -766,38 +771,40 @@ const App: React.FC = () => {
                   <div className="auth-fields">
                     <div className="auth-field">
                       <label className="auth-label">Username</label>
-                      <input
+                      <AutoSuggestInput
                         className="auth-input"
                         type="text"
                         placeholder="{{username}} or enter username"
                         value={activeTab.auth.username}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           updateTab(activeTab.id, {
                             auth: {
                               type: "basic",
-                              username: e.target.value,
+                              username: v,
                               password: activeTab.auth.type === "basic" ? activeTab.auth.password : "",
                             },
                           })
                         }
+                        variables={activeEnv?.variables ?? []}
                       />
                     </div>
                     <div className="auth-field">
                       <label className="auth-label">Password</label>
-                      <input
+                      <AutoSuggestInput
                         className="auth-input"
-                        type="password"
+                        type="text"
                         placeholder="{{password}} or enter password"
                         value={activeTab.auth.password}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           updateTab(activeTab.id, {
                             auth: {
                               type: "basic",
                               username: activeTab.auth.type === "basic" ? activeTab.auth.username : "",
-                              password: e.target.value,
+                              password: v,
                             },
                           })
                         }
+                        variables={activeEnv?.variables ?? []}
                       />
                     </div>
                     <div className="auth-info">
