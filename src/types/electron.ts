@@ -55,6 +55,12 @@ export interface HistoryEntry {
   request: SavedRequest;
 }
 
+export interface SessionState {
+  tabs: RequestTab[];
+  activeTabId: string;
+  activeEnvId: string | null;
+}
+
 export interface RequestTab {
   id: string;
   name: string;
@@ -78,6 +84,8 @@ declare global {
       saveEnvironments: (environments: Environment[]) => Promise<void>;
       loadHistory: () => Promise<HistoryEntry[]>;
       saveHistory: (history: HistoryEntry[]) => Promise<void>;
+      loadSession: () => Promise<SessionState | null>;
+      saveSession: (session: SessionState) => Promise<void>;
     };
   }
 }

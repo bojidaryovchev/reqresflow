@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import KeyValueEditor, { KeyValuePair } from './components/KeyValueEditor';
 import Sidebar from './components/Sidebar';
 import EnvManager from './components/EnvManager';
-import { Collection, Environment, SavedRequest, Payload, HistoryEntry, RequestTab as RequestTabType } from './types/electron';
+import { Collection, Environment, SavedRequest, Payload, HistoryEntry, RequestTab as RequestTabType, SessionState } from './types/electron';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type RequestPanel = 'params' | 'headers' | 'body';
@@ -81,6 +81,7 @@ const App: React.FC = () => {
   const [requestPanel, setRequestPanel] = useState<RequestPanel>('params');
   const [responsePanel, setResponsePanel] = useState<ResponsePanel>('body');
   const [loading, setLoading] = useState(false);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   // Collections
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -126,15 +127,35 @@ const App: React.FC = () => {
     });
   }, [activeTabId]);
 
-  // Load collections, environments, & history on mount
+  // Load collections, environments, history & session on mount
   useEffect(() => {
-    window.electronAPI.loadCollections().then(setCollections);
-    window.electronAPI.loadEnvironments().then((envs) => {
+    Promise.all([
+      window.electronAPI.loadCollections(),
+      window.electronAPI.loadEnvironments(),
+      window.electronAPI.loadHistory(),
+      window.electronAPI.loadSession(),
+    ]).then(([cols, envs, hist, session]) => {
+      setCollections(cols);
       setEnvironments(envs);
-      if (envs.length > 0) setActiveEnvId(envs[0].id);
+      setHistory(hist);
+
+      if (session && session.tabs && session.tabs.length > 0) {
+        setTabs(session.tabs);
+        setActiveTabId(session.activeTabId);
+        setActiveEnvId(session.activeEnvId);
+      } else {
+        if (envs.length > 0) setActiveEnvId(envs[0].id);
+      }
+      setSessionLoaded(true);
     });
-    window.electronAPI.loadHistory().then((h) => setHistory(h));
   }, []);
+
+  // Auto-save session when tabs or active selections change
+  useEffect(() => {
+    if (!sessionLoaded) return;
+    const session: SessionState = { tabs, activeTabId, activeEnvId };
+    window.electronAPI.saveSession(session);
+  }, [tabs, activeTabId, activeEnvId, sessionLoaded]);
 
   // Persist collections when they change
   const handleCollectionsChange = useCallback((updated: Collection[]) => {

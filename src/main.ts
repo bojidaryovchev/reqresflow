@@ -27,6 +27,10 @@ function getHistoryPath(): string {
   return path.join(getDataDir(), 'history.json');
 }
 
+function getSessionPath(): string {
+  return path.join(getDataDir(), 'session.json');
+}
+
 // ── IPC: Collections ──
 ipcMain.handle('collections:load', () => {
   const filePath = getCollectionsPath();
@@ -58,6 +62,21 @@ ipcMain.handle('history:load', () => {
 
 ipcMain.handle('history:save', (_event, history: unknown) => {
   fs.writeFileSync(getHistoryPath(), JSON.stringify(history, null, 2), 'utf-8');
+});
+
+// ── IPC: Session ──
+ipcMain.handle('session:load', () => {
+  const filePath = getSessionPath();
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('session:save', (_event, session: unknown) => {
+  fs.writeFileSync(getSessionPath(), JSON.stringify(session), 'utf-8');
 });
 
 // ── IPC: HTTP Request Handler ──

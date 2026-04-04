@@ -19,4 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // History
   loadHistory: () => ipcRenderer.invoke('history:load'),
   saveHistory: (history: unknown) => ipcRenderer.invoke('history:save', history),
+
+  // Session
+  loadSession: () => ipcRenderer.invoke('session:load'),
+  saveSession: (session: unknown) => ipcRenderer.invoke('session:save', session),
 });
