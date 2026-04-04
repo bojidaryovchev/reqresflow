@@ -2,11 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import KeyValueEditor, { KeyValuePair } from './components/KeyValueEditor';
 import Sidebar from './components/Sidebar';
 import EnvManager from './components/EnvManager';
-import { Collection, Environment, SavedRequest, Payload } from './types/electron';
+import { Collection, Environment, SavedRequest, Payload, HistoryEntry, RequestTab as RequestTabType } from './types/electron';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-type RequestTab = 'params' | 'headers' | 'body';
-type ResponseTab = 'body' | 'headers';
+type RequestPanel = 'params' | 'headers' | 'body';
+type ResponsePanel = 'body' | 'headers';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -58,18 +58,29 @@ function substituteVars(text: string, variables: { key: string; value: string }[
   });
 }
 
+function createEmptyTab(): RequestTabType {
+  const payloadId = generateId();
+  return {
+    id: generateId(),
+    name: 'Untitled',
+    method: 'GET',
+    url: '',
+    params: [{ enabled: true, key: '', value: '' }],
+    headers: [{ enabled: true, key: '', value: '' }],
+    payloads: [{ id: payloadId, name: 'Default', body: '' }],
+    activePayloadId: payloadId,
+    response: null,
+    error: null,
+  };
+}
+
 const App: React.FC = () => {
-  const [method, setMethod] = useState<HttpMethod>('GET');
-  const [url, setUrl] = useState('');
-  const [params, setParams] = useState<KeyValuePair[]>([{ enabled: true, key: '', value: '' }]);
-  const [headers, setHeaders] = useState<KeyValuePair[]>([{ enabled: true, key: '', value: '' }]);
-  const [payloads, setPayloads] = useState<Payload[]>([{ id: generateId(), name: 'Default', body: '' }]);
-  const [activePayloadId, setActivePayloadId] = useState<string>(payloads[0].id);
-  const [requestTab, setRequestTab] = useState<RequestTab>('params');
-  const [responseTab, setResponseTab] = useState<ResponseTab>('body');
-  const [response, setResponse] = useState<ResponseData | null>(null);
+  // Tabs
+  const [tabs, setTabs] = useState<RequestTabType[]>(() => [createEmptyTab()]);
+  const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
+  const [requestPanel, setRequestPanel] = useState<RequestPanel>('params');
+  const [responsePanel, setResponsePanel] = useState<ResponsePanel>('body');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Collections
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -79,15 +90,50 @@ const App: React.FC = () => {
   const [activeEnvId, setActiveEnvId] = useState<string | null>(null);
   const [showEnvManager, setShowEnvManager] = useState(false);
 
-  const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
+  // History
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  // Load collections & environments on mount
+  const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
+  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+
+  // Helper to update the active tab
+  const updateTab = useCallback((id: string, updates: Partial<RequestTabType>) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+  }, []);
+
+  // Tab management
+  const addTab = useCallback(() => {
+    const newTab = createEmptyTab();
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+  }, []);
+
+  const closeTab = useCallback((id: string) => {
+    setTabs((prev) => {
+      if (prev.length <= 1) {
+        // Can't close last tab — reset it instead
+        const fresh = createEmptyTab();
+        setActiveTabId(fresh.id);
+        return [fresh];
+      }
+      const idx = prev.findIndex((t) => t.id === id);
+      const remaining = prev.filter((t) => t.id !== id);
+      if (activeTabId === id) {
+        const newIdx = Math.min(idx, remaining.length - 1);
+        setActiveTabId(remaining[newIdx].id);
+      }
+      return remaining;
+    });
+  }, [activeTabId]);
+
+  // Load collections, environments, & history on mount
   useEffect(() => {
     window.electronAPI.loadCollections().then(setCollections);
     window.electronAPI.loadEnvironments().then((envs) => {
       setEnvironments(envs);
       if (envs.length > 0) setActiveEnvId(envs[0].id);
     });
+    window.electronAPI.loadHistory().then((h) => setHistory(h));
   }, []);
 
   // Persist collections when they change
@@ -100,82 +146,103 @@ const App: React.FC = () => {
   const handleEnvironmentsChange = useCallback((updated: Environment[]) => {
     setEnvironments(updated);
     window.electronAPI.saveEnvironments(updated);
-    // If active env was deleted, reset
     if (activeEnvId && !updated.find((e) => e.id === activeEnvId)) {
       setActiveEnvId(updated.length > 0 ? updated[0].id : null);
     }
   }, [activeEnvId]);
 
-  // Active payload helpers
-  const activePayload = payloads.find((p) => p.id === activePayloadId) || payloads[0];
+  // Active payload helpers (operate on activeTab)
+  const activePayload = activeTab.payloads.find((p) => p.id === activeTab.activePayloadId) || activeTab.payloads[0];
   const body = activePayload?.body || '';
 
   const updatePayloadBody = (value: string) => {
-    setPayloads((prev) => prev.map((p) => (p.id === activePayloadId ? { ...p, body: value } : p)));
+    updateTab(activeTab.id, {
+      payloads: activeTab.payloads.map((p) => (p.id === activeTab.activePayloadId ? { ...p, body: value } : p)),
+    });
   };
 
   const addPayload = () => {
-    const newPayload: Payload = { id: generateId(), name: `Payload ${payloads.length + 1}`, body: '' };
-    setPayloads((prev) => [...prev, newPayload]);
-    setActivePayloadId(newPayload.id);
+    const newPayload: Payload = { id: generateId(), name: `Payload ${activeTab.payloads.length + 1}`, body: '' };
+    updateTab(activeTab.id, {
+      payloads: [...activeTab.payloads, newPayload],
+      activePayloadId: newPayload.id,
+    });
   };
 
   const removePayload = (id: string) => {
-    if (payloads.length <= 1) return;
-    const updated = payloads.filter((p) => p.id !== id);
-    setPayloads(updated);
-    if (activePayloadId === id) setActivePayloadId(updated[0].id);
+    if (activeTab.payloads.length <= 1) return;
+    const updated = activeTab.payloads.filter((p) => p.id !== id);
+    updateTab(activeTab.id, {
+      payloads: updated,
+      activePayloadId: activeTab.activePayloadId === id ? updated[0].id : activeTab.activePayloadId,
+    });
   };
 
   const renamePayload = (id: string, name: string) => {
-    setPayloads((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
+    updateTab(activeTab.id, {
+      payloads: activeTab.payloads.map((p) => (p.id === id ? { ...p, name } : p)),
+    });
   };
 
   // Get current request state as a SavedRequest
   const getCurrentRequest = useCallback((): SavedRequest => {
     return {
       id: '',
-      name: url.trim() ? new URL(url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`).pathname || url.trim() : 'Untitled Request',
-      method,
-      url,
-      params,
-      headers,
+      name: activeTab.url.trim()
+        ? (() => { try { return new URL(activeTab.url.trim().startsWith('http') ? activeTab.url.trim() : `https://${activeTab.url.trim()}`).pathname || activeTab.url.trim(); } catch { return activeTab.url.trim(); } })()
+        : 'Untitled Request',
+      method: activeTab.method,
+      url: activeTab.url,
+      params: activeTab.params,
+      headers: activeTab.headers,
       body,
-      payloads,
-      activePayloadId,
+      payloads: activeTab.payloads,
+      activePayloadId: activeTab.activePayloadId,
     };
-  }, [method, url, params, headers, body, payloads, activePayloadId]);
+  }, [activeTab, body]);
 
-  // Load a saved request into the editor
+  // Load a saved request into a new tab
   const loadRequest = useCallback((req: SavedRequest) => {
-    setMethod(req.method as HttpMethod);
-    setUrl(req.url);
-    setParams(req.params.length > 0 ? req.params : [{ enabled: true, key: '', value: '' }]);
-    setHeaders(req.headers.length > 0 ? req.headers : [{ enabled: true, key: '', value: '' }]);
-    if (req.payloads && req.payloads.length > 0) {
-      setPayloads(req.payloads);
-      setActivePayloadId(req.activePayloadId || req.payloads[0].id);
-    } else {
-      const defaultPayload: Payload = { id: generateId(), name: 'Default', body: req.body };
-      setPayloads([defaultPayload]);
-      setActivePayloadId(defaultPayload.id);
-    }
-    setResponse(null);
-    setError(null);
+    const payloads = req.payloads && req.payloads.length > 0
+      ? req.payloads
+      : [{ id: generateId(), name: 'Default', body: req.body }];
+    const newTab: RequestTabType = {
+      id: generateId(),
+      name: req.name,
+      method: req.method,
+      url: req.url,
+      params: req.params.length > 0 ? req.params : [{ enabled: true, key: '', value: '' }],
+      headers: req.headers.length > 0 ? req.headers : [{ enabled: true, key: '', value: '' }],
+      payloads,
+      activePayloadId: req.activePayloadId || payloads[0].id,
+      response: null,
+      error: null,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+  }, []);
+
+  // Load a history entry into a new tab
+  const loadHistoryEntry = useCallback((entry: HistoryEntry) => {
+    loadRequest(entry.request);
+  }, [loadRequest]);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    window.electronAPI.saveHistory([]);
   }, []);
 
   const sendRequest = useCallback(async () => {
-    if (!url.trim()) return;
+    if (!activeTab.url.trim()) return;
 
     setLoading(true);
-    setError(null);
-    setResponse(null);
+    updateTab(activeTab.id, { error: null, response: null });
 
     const vars = activeEnv?.variables || [];
 
-    // Build query string from enabled params (with var substitution)
-    let fullUrl = substituteVars(url.trim(), vars);
-    const enabledParams = params.filter((p) => p.enabled && p.key.trim());
+    // Build query string from enabled params
+    let fullUrl = substituteVars(activeTab.url.trim(), vars);
+    const enabledParams = activeTab.params.filter((p) => p.enabled && p.key.trim());
     if (enabledParams.length > 0) {
       const qs = enabledParams
         .map((p) => `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`)
@@ -183,32 +250,63 @@ const App: React.FC = () => {
       fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
     }
 
-    // Build headers from enabled pairs (with var substitution)
+    // Build headers
     const headerObj: Record<string, string> = {};
-    headers.filter((h) => h.enabled && h.key.trim()).forEach((h) => {
+    activeTab.headers.filter((h) => h.enabled && h.key.trim()).forEach((h) => {
       headerObj[substituteVars(h.key, vars)] = substituteVars(h.value, vars);
     });
 
-    const resolvedBody = ['POST', 'PUT', 'PATCH'].includes(method) ? substituteVars(body, vars) : undefined;
+    const resolvedBody = ['POST', 'PUT', 'PATCH'].includes(activeTab.method) ? substituteVars(body, vars) : undefined;
 
     try {
       const result = await window.electronAPI.sendRequest({
-        method,
+        method: activeTab.method,
         url: fullUrl,
         headers: headerObj,
         body: resolvedBody,
       });
-      setResponse(result);
+      updateTab(activeTab.id, { response: result, error: null });
+
+      // Add to history
+      const entry: HistoryEntry = {
+        id: generateId(),
+        timestamp: Date.now(),
+        method: activeTab.method,
+        url: activeTab.url.trim(),
+        status: result.status,
+        statusText: result.statusText,
+        time: result.time,
+        request: getCurrentRequest(),
+      };
+      const updatedHistory = [entry, ...history].slice(0, 100); // keep max 100
+      setHistory(updatedHistory);
+      window.electronAPI.saveHistory(updatedHistory);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      updateTab(activeTab.id, { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setLoading(false);
     }
-  }, [method, url, params, headers, body, activeEnv]);
+  }, [activeTab, body, activeEnv, history, getCurrentRequest, updateTab]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') sendRequest();
   };
+
+  // Derive tab display name
+  const getTabName = (tab: RequestTabType) => {
+    if (tab.url.trim()) {
+      try {
+        const u = new URL(tab.url.trim().startsWith('http') ? tab.url.trim() : `https://${tab.url.trim()}`);
+        return u.pathname || tab.url.trim();
+      } catch {
+        return tab.url.trim();
+      }
+    }
+    return tab.name || 'Untitled';
+  };
+
+  const response = activeTab.response;
+  const error = activeTab.error;
 
   return (
     <div className="app">
@@ -218,10 +316,41 @@ const App: React.FC = () => {
         onCollectionsChange={handleCollectionsChange}
         onLoadRequest={loadRequest}
         onSaveRequest={getCurrentRequest}
+        history={history}
+        onLoadHistory={loadHistoryEntry}
+        onClearHistory={clearHistory}
       />
 
       {/* Main Panel */}
       <div className="main-panel">
+        {/* Request Tabs Bar */}
+        <div className="request-tabs-bar">
+          <div className="request-tabs-list">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className={`request-tab-item ${tab.id === activeTabId ? 'active' : ''}`}
+                onClick={() => setActiveTabId(tab.id)}
+              >
+                <span
+                  className="request-tab-method"
+                  style={{ color: METHOD_COLORS[tab.method as HttpMethod] || 'var(--text-secondary)' }}
+                >
+                  {tab.method}
+                </span>
+                <span className="request-tab-name">{getTabName(tab)}</span>
+                <button
+                  className="request-tab-close"
+                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button className="request-tab-add" onClick={addTab} title="New Tab">+</button>
+        </div>
+
         {/* Environment Bar */}
         <div className="env-bar">
           <select
@@ -243,9 +372,9 @@ const App: React.FC = () => {
         <div className="url-bar">
           <select
             className="method-select"
-            value={method}
-            onChange={(e) => setMethod(e.target.value as HttpMethod)}
-            style={{ color: METHOD_COLORS[method] }}
+            value={activeTab.method}
+            onChange={(e) => updateTab(activeTab.id, { method: e.target.value })}
+            style={{ color: METHOD_COLORS[activeTab.method as HttpMethod] }}
           >
             {(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -255,11 +384,11 @@ const App: React.FC = () => {
             className="url-input"
             type="text"
             placeholder="Enter request URL..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            value={activeTab.url}
+            onChange={(e) => updateTab(activeTab.id, { url: e.target.value })}
             onKeyDown={handleKeyDown}
           />
-          <button className="send-btn" onClick={sendRequest} disabled={loading || !url.trim()}>
+          <button className="send-btn" onClick={sendRequest} disabled={loading || !activeTab.url.trim()}>
             {loading ? 'Sending...' : 'Send'}
           </button>
         </div>
@@ -268,35 +397,41 @@ const App: React.FC = () => {
           {/* Request Section */}
           <div className="request-section">
             <div className="tabs">
-              {(['params', 'headers', 'body'] as RequestTab[]).map((tab) => (
+              {(['params', 'headers', 'body'] as RequestPanel[]).map((tab) => (
                 <button
                   key={tab}
-                  className={`tab ${requestTab === tab ? 'active' : ''}`}
-                  onClick={() => setRequestTab(tab)}
+                  className={`tab ${requestPanel === tab ? 'active' : ''}`}
+                  onClick={() => setRequestPanel(tab)}
                 >
                   {tab}
                 </button>
               ))}
             </div>
 
-            {requestTab === 'params' && (
-              <KeyValueEditor pairs={params} onChange={setParams} />
+            {requestPanel === 'params' && (
+              <KeyValueEditor
+                pairs={activeTab.params}
+                onChange={(p) => updateTab(activeTab.id, { params: p })}
+              />
             )}
-            {requestTab === 'headers' && (
-              <KeyValueEditor pairs={headers} onChange={setHeaders} />
+            {requestPanel === 'headers' && (
+              <KeyValueEditor
+                pairs={activeTab.headers}
+                onChange={(h) => updateTab(activeTab.id, { headers: h })}
+              />
             )}
-            {requestTab === 'body' && (
+            {requestPanel === 'body' && (
               <div className="body-editor">
                 <div className="payload-bar">
                   <div className="payload-tabs">
-                    {payloads.map((p) => (
+                    {activeTab.payloads.map((p) => (
                       <div
                         key={p.id}
-                        className={`payload-tab ${p.id === activePayloadId ? 'active' : ''}`}
-                        onClick={() => setActivePayloadId(p.id)}
+                        className={`payload-tab ${p.id === activeTab.activePayloadId ? 'active' : ''}`}
+                        onClick={() => updateTab(activeTab.id, { activePayloadId: p.id })}
                       >
                         <span className="payload-tab-name">{p.name}</span>
-                        {payloads.length > 1 && (
+                        {activeTab.payloads.length > 1 && (
                           <button
                             className="payload-tab-close"
                             onClick={(e) => { e.stopPropagation(); removePayload(p.id); }}
@@ -331,11 +466,11 @@ const App: React.FC = () => {
           {/* Response Section */}
           <div className="response-section">
             <div className="tabs">
-              {(['body', 'headers'] as ResponseTab[]).map((tab) => (
+              {(['body', 'headers'] as ResponsePanel[]).map((tab) => (
                 <button
                   key={tab}
-                  className={`tab ${responseTab === tab ? 'active' : ''}`}
-                  onClick={() => setResponseTab(tab)}
+                  className={`tab ${responsePanel === tab ? 'active' : ''}`}
+                  onClick={() => setResponsePanel(tab)}
                 >
                   {tab === 'body' ? 'Response Body' : 'Response Headers'}
                 </button>
@@ -360,13 +495,13 @@ const App: React.FC = () => {
                   <span className="response-size">{formatSize(response.size)}</span>
                 </div>
 
-                {responseTab === 'body' && (
+                {responsePanel === 'body' && (
                   <div className="response-body">
                     <pre>{tryPrettyJson(response.body)}</pre>
                   </div>
                 )}
 
-                {responseTab === 'headers' && (
+                {responsePanel === 'headers' && (
                   <div className="response-headers-list">
                     {Object.entries(response.headers).map(([key, value]) => (
                       <div className="response-header-row" key={key}>

@@ -44,6 +44,30 @@ export interface Environment {
   variables: { key: string; value: string }[];
 }
 
+export interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  method: string;
+  url: string;
+  status: number;
+  statusText: string;
+  time: number;
+  request: SavedRequest;
+}
+
+export interface RequestTab {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  params: { enabled: boolean; key: string; value: string }[];
+  headers: { enabled: boolean; key: string; value: string }[];
+  payloads: Payload[];
+  activePayloadId: string;
+  response: ResponseData | null;
+  error: string | null;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -52,6 +76,8 @@ declare global {
       saveCollections: (collections: Collection[]) => Promise<void>;
       loadEnvironments: () => Promise<Environment[]>;
       saveEnvironments: (environments: Environment[]) => Promise<void>;
+      loadHistory: () => Promise<HistoryEntry[]>;
+      saveHistory: (history: HistoryEntry[]) => Promise<void>;
     };
   }
 }

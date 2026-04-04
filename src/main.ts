@@ -23,6 +23,10 @@ function getEnvironmentsPath(): string {
   return path.join(getDataDir(), 'environments.json');
 }
 
+function getHistoryPath(): string {
+  return path.join(getDataDir(), 'history.json');
+}
+
 // ── IPC: Collections ──
 ipcMain.handle('collections:load', () => {
   const filePath = getCollectionsPath();
@@ -43,6 +47,17 @@ ipcMain.handle('environments:load', () => {
 
 ipcMain.handle('environments:save', (_event, environments: unknown) => {
   fs.writeFileSync(getEnvironmentsPath(), JSON.stringify(environments, null, 2), 'utf-8');
+});
+
+// ── IPC: History ──
+ipcMain.handle('history:load', () => {
+  const filePath = getHistoryPath();
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+});
+
+ipcMain.handle('history:save', (_event, history: unknown) => {
+  fs.writeFileSync(getHistoryPath(), JSON.stringify(history, null, 2), 'utf-8');
 });
 
 // ── IPC: HTTP Request Handler ──

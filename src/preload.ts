@@ -15,4 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Environments
   loadEnvironments: () => ipcRenderer.invoke('environments:load'),
   saveEnvironments: (environments: unknown) => ipcRenderer.invoke('environments:save', environments),
+
+  // History
+  loadHistory: () => ipcRenderer.invoke('history:load'),
+  saveHistory: (history: unknown) => ipcRenderer.invoke('history:save', history),
 });
