@@ -3,6 +3,7 @@ import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
 import Sidebar from "./components/Sidebar";
 import {
+  AuthConfig,
   Collection,
   Environment,
   HistoryEntry,
@@ -14,7 +15,7 @@ import {
 } from "./types/electron";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-type RequestPanel = "params" | "headers" | "body" | "captures";
+type RequestPanel = "params" | "headers" | "body" | "auth" | "captures";
 type ResponsePanel = "body" | "headers";
 
 function generateId(): string {
@@ -84,6 +85,7 @@ function createEmptyTab(): RequestTabType {
     response: null,
     error: null,
     captures: [],
+    auth: { type: "none" },
   };
 }
 
@@ -353,6 +355,7 @@ const App: React.FC = () => {
       payloads: activeTab.payloads,
       activePayloadId: activeTab.activePayloadId,
       captures: activeTab.captures,
+      auth: activeTab.auth,
     };
   }, [activeTab, body]);
 
@@ -380,6 +383,7 @@ const App: React.FC = () => {
       response: null,
       error: null,
       captures: req.captures || [],
+      auth: req.auth || { type: "none" },
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -428,6 +432,16 @@ const App: React.FC = () => {
       .forEach((h) => {
         headerObj[substituteVars(h.key, vars)] = substituteVars(h.value, vars);
       });
+
+    // Apply auth
+    const auth = activeTab.auth;
+    if (auth.type === "bearer" && auth.token.trim()) {
+      headerObj["Authorization"] = `Bearer ${substituteVars(auth.token.trim(), vars)}`;
+    } else if (auth.type === "basic" && (auth.username.trim() || auth.password.trim())) {
+      const user = substituteVars(auth.username, vars);
+      const pass = substituteVars(auth.password, vars);
+      headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
+    }
 
     const resolvedBody = ["POST", "PUT", "PATCH"].includes(activeTab.method)
       ? substituteVars(body, vars)
@@ -614,7 +628,7 @@ const App: React.FC = () => {
           <div className="request-section">
             <div className="tabs">
               {(
-                ["params", "headers", "body", "captures"] as RequestPanel[]
+                ["params", "headers", "body", "auth", "captures"] as RequestPanel[]
               ).map((tab) => (
                 <button
                   key={tab}
@@ -622,6 +636,9 @@ const App: React.FC = () => {
                   onClick={() => setRequestPanel(tab)}
                 >
                   {tab}
+                  {tab === "auth" && activeTab.auth.type !== "none" && (
+                    <span className="tab-badge">●</span>
+                  )}
                   {tab === "captures" && activeTab.captures.length > 0 && (
                     <span className="tab-badge">
                       {activeTab.captures.filter((c) => c.enabled).length}
@@ -695,6 +712,104 @@ const App: React.FC = () => {
                   onChange={(e) => updatePayloadBody(e.target.value)}
                   spellCheck={false}
                 />
+              </div>
+            )}
+            {requestPanel === "auth" && (
+              <div className="auth-editor">
+                <div className="auth-type-row">
+                  <label className="auth-label">Type</label>
+                  <select
+                    className="auth-type-select"
+                    value={activeTab.auth.type}
+                    onChange={(e) => {
+                      const type = e.target.value as AuthConfig["type"];
+                      if (type === "none") {
+                        updateTab(activeTab.id, { auth: { type: "none" } });
+                      } else if (type === "bearer") {
+                        updateTab(activeTab.id, {
+                          auth: { type: "bearer", token: "" },
+                        });
+                      } else if (type === "basic") {
+                        updateTab(activeTab.id, {
+                          auth: { type: "basic", username: "", password: "" },
+                        });
+                      }
+                    }}
+                  >
+                    <option value="none">No Auth</option>
+                    <option value="bearer">Bearer Token</option>
+                    <option value="basic">Basic Auth</option>
+                  </select>
+                </div>
+                {activeTab.auth.type === "bearer" && (
+                  <div className="auth-fields">
+                    <div className="auth-field">
+                      <label className="auth-label">Token</label>
+                      <input
+                        className="auth-input"
+                        type="text"
+                        placeholder="{{token}} or paste token"
+                        value={activeTab.auth.token}
+                        onChange={(e) =>
+                          updateTab(activeTab.id, {
+                            auth: { type: "bearer", token: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="auth-info">
+                      Will send as: Authorization: Bearer &lt;token&gt;
+                    </div>
+                  </div>
+                )}
+                {activeTab.auth.type === "basic" && (
+                  <div className="auth-fields">
+                    <div className="auth-field">
+                      <label className="auth-label">Username</label>
+                      <input
+                        className="auth-input"
+                        type="text"
+                        placeholder="{{username}} or enter username"
+                        value={activeTab.auth.username}
+                        onChange={(e) =>
+                          updateTab(activeTab.id, {
+                            auth: {
+                              type: "basic",
+                              username: e.target.value,
+                              password: activeTab.auth.type === "basic" ? activeTab.auth.password : "",
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="auth-field">
+                      <label className="auth-label">Password</label>
+                      <input
+                        className="auth-input"
+                        type="password"
+                        placeholder="{{password}} or enter password"
+                        value={activeTab.auth.password}
+                        onChange={(e) =>
+                          updateTab(activeTab.id, {
+                            auth: {
+                              type: "basic",
+                              username: activeTab.auth.type === "basic" ? activeTab.auth.username : "",
+                              password: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="auth-info">
+                      Will send as: Authorization: Basic base64(username:password)
+                    </div>
+                  </div>
+                )}
+                {activeTab.auth.type === "none" && (
+                  <div className="auth-info" style={{ marginTop: 12 }}>
+                    No authentication will be applied to this request.
+                  </div>
+                )}
               </div>
             )}
             {requestPanel === "captures" && (

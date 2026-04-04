@@ -28,6 +28,11 @@ export interface ResponseCapture {
   path: string; // JSONPath-like dot notation for body, header name for header, empty for status
 }
 
+export type AuthConfig =
+  | { type: "none" }
+  | { type: "bearer"; token: string }
+  | { type: "basic"; username: string; password: string };
+
 export interface SavedRequest {
   id: string;
   name: string;
@@ -39,6 +44,7 @@ export interface SavedRequest {
   payloads?: Payload[];
   activePayloadId?: string | null;
   captures?: ResponseCapture[];
+  auth?: AuthConfig;
 }
 
 export interface Collection {
@@ -82,6 +88,7 @@ export interface RequestTab {
   response: ResponseData | null;
   error: string | null;
   captures: ResponseCapture[];
+  auth: AuthConfig;
 }
 
 declare global {
