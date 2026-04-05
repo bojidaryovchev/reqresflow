@@ -171,7 +171,6 @@ function createEmptyTab(): RequestTabType {
     savedToCollectionId: null,
     savedRequestId: null,
     sourceHistoryId: null,
-    tabSource: "collections",
     isDirty: false,
   };
 }
@@ -365,12 +364,6 @@ const App: React.FC = () => {
   const [flowRunState, setFlowRunState] = useState<FlowRunState | null>(null);
   const flowAbortRef = useRef(false);
 
-  // Remember last active tab per section
-  const lastActiveTabPerSection = useRef<Record<string, string | null>>({
-    collections: null,
-    history: null,
-  });
-
   // Pending send after loading a variant
   const pendingSendRef = useRef<string | null>(null);
 
@@ -432,42 +425,24 @@ const App: React.FC = () => {
   // Tab management
   const addTab = useCallback(() => {
     const newTab = createEmptyTab();
-    newTab.tabSource = sidebarSection === "history" ? "history" : "collections";
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
-  }, [sidebarSection]);
+  }, []);
 
   const closeTab = useCallback(
     (id: string) => {
       setTabs((prev) => {
-        const tab = prev.find((t) => t.id === id);
-        const source = tab?.tabSource || "collections";
-        const sameSectionTabs = prev.filter((t) => t.tabSource === source);
-
-        if (sameSectionTabs.length <= 1 && source === "collections") {
-          // Can't close last collections tab — reset it instead
+        if (prev.length <= 1) {
+          // Can't close last tab — reset it instead
           const fresh = createEmptyTab();
-          const remaining = prev.filter((t) => t.id !== id);
           setActiveTabId(fresh.id);
-          return [...remaining, fresh];
+          return [fresh];
         }
-
-        const sectionIdx = sameSectionTabs.findIndex((t) => t.id === id);
+        const idx = prev.findIndex((t) => t.id === id);
         const remaining = prev.filter((t) => t.id !== id);
         if (activeTabId === id) {
-          const remainingSection = remaining.filter(
-            (t) => t.tabSource === source,
-          );
-          if (remainingSection.length > 0) {
-            const newIdx = Math.min(sectionIdx, remainingSection.length - 1);
-            setActiveTabId(remainingSection[newIdx].id);
-          } else {
-            // No more tabs in this section
-            const otherTabs = remaining.filter((t) => t.tabSource !== source);
-            if (otherTabs.length > 0) {
-              setActiveTabId(otherTabs[0].id);
-            }
-          }
+          const newIdx = Math.min(idx, remaining.length - 1);
+          setActiveTabId(remaining[newIdx].id);
         }
         return remaining;
       });
@@ -508,50 +483,17 @@ const App: React.FC = () => {
   }, []);
 
   const closeAllTabs = useCallback(() => {
-    const source = sidebarSection === "history" ? "history" : "collections";
-    setTabs((prev) => {
-      const otherTabs = prev.filter((t) => t.tabSource !== source);
-      if (source === "collections") {
-        const fresh = createEmptyTab();
-        setActiveTabId(fresh.id);
-        return [...otherTabs, fresh];
-      }
-      // For history, just remove all history tabs
-      const collectionsTabId = lastActiveTabPerSection.current.collections;
-      if (
-        collectionsTabId &&
-        otherTabs.some((t) => t.id === collectionsTabId)
-      ) {
-        setActiveTabId(collectionsTabId);
-      } else if (otherTabs.length > 0) {
-        setActiveTabId(otherTabs[0].id);
-      }
-      return otherTabs;
-    });
-  }, [sidebarSection]);
+    const fresh = createEmptyTab();
+    setTabs([fresh]);
+    setActiveTabId(fresh.id);
+  }, []);
 
-  // Handle sidebar section switching with tab memory
+  // Handle sidebar section switching
   const handleSectionChange = useCallback(
     (section: SidebarSection) => {
-      // Save current active tab for current section
-      if (sidebarSection !== "flows") {
-        lastActiveTabPerSection.current[sidebarSection] = activeTabId;
-      }
-      // Restore active tab for new section
-      if (section !== "flows") {
-        const source = section === "history" ? "history" : "collections";
-        const sectionTabs = tabs.filter((t) => t.tabSource === source);
-        const lastId = lastActiveTabPerSection.current[section];
-        if (lastId && sectionTabs.some((t) => t.id === lastId)) {
-          setActiveTabId(lastId);
-        } else if (sectionTabs.length > 0) {
-          setActiveTabId(sectionTabs[0].id);
-        }
-        // If no tabs for this section, activeTabId stays as-is (won't render request UI)
-      }
       setSidebarSection(section);
     },
-    [sidebarSection, activeTabId, tabs],
+    [],
   );
 
   // Sidebar resize handlers
@@ -607,11 +549,6 @@ const App: React.FC = () => {
           savedToCollectionId: t.savedToCollectionId ?? null,
           savedRequestId: t.savedRequestId ?? null,
           sourceHistoryId: (t as RequestTabType).sourceHistoryId ?? null,
-          tabSource:
-            (t as RequestTabType).tabSource ||
-            (((t as RequestTabType).sourceHistoryId
-              ? "history"
-              : "collections") as "collections" | "history"),
           isDirty: t.isDirty ?? false,
           payloads: (t.payloads || []).map((p) => ({
             ...p,
@@ -1001,7 +938,6 @@ const App: React.FC = () => {
         savedToCollectionId: collectionId || null,
         savedRequestId: requestId || null,
         sourceHistoryId: historyId || null,
-        tabSource: historyId ? "history" : "collections",
         isDirty: false,
       };
       setTabs((prev) => [...prev, newTab]);
@@ -1656,6 +1592,26 @@ const App: React.FC = () => {
         };
         stepResults.push(result);
 
+        // Add successful flow step requests to history
+        if (!isError && detail.response) {
+          const historyEntry: HistoryEntry = {
+            id: generateId(),
+            timestamp: Date.now(),
+            method: req.method,
+            url: req.url,
+            status: detail.response.status,
+            statusText: detail.response.statusText,
+            time: detail.response.time,
+            request: mergedReq,
+            flowName: flow.name,
+          };
+          setHistory((prev) => {
+            const updated = [historyEntry, ...prev].slice(0, 100);
+            window.electronAPI.saveHistory(updated);
+            return updated;
+          });
+        }
+
         // Update run state in real-time
         setFlowRunState((prev) =>
           prev
@@ -1920,21 +1876,6 @@ const App: React.FC = () => {
   const response = activeTab.response;
   const error = activeTab.error;
 
-  const currentTabSource =
-    sidebarSection === "history" ? "history" : "collections";
-  const visibleTabs = tabs.filter((t) => t.tabSource === currentTabSource);
-  const hasVisibleTabs = visibleTabs.length > 0;
-
-  const handleReorderVisibleTabs = useCallback(
-    (reordered: RequestTabType[]) => {
-      setTabs((prev) => {
-        const otherTabs = prev.filter((t) => t.tabSource !== currentTabSource);
-        return [...otherTabs, ...reordered];
-      });
-    },
-    [currentTabSource],
-  );
-
   return (
     <div className="app">
       {/* Sidebar */}
@@ -1977,11 +1918,11 @@ const App: React.FC = () => {
                 <Reorder.Group
                   as="div"
                   axis="x"
-                  values={visibleTabs}
-                  onReorder={handleReorderVisibleTabs}
+                  values={tabs}
+                  onReorder={setTabs}
                   className="request-tabs-list"
                 >
-                  {visibleTabs.map((tab) => (
+                  {tabs.map((tab) => (
                     <TabItem
                       key={tab.id}
                       tab={tab}
@@ -2083,7 +2024,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {sidebarSection !== "flows" && hasVisibleTabs && (
+        {sidebarSection !== "flows" && (
           <>
             {/* Tab Context Menu */}
             {tabContextMenu && (
@@ -2406,6 +2347,8 @@ const App: React.FC = () => {
                             : "Enter request body..."
                         }
                         showFormatButton
+                        variables={activeEnv?.variables ?? []}
+                        envName={activeEnv?.name}
                       />
                     )}
                     {(activeTab.bodyType === "form-data" ||
@@ -2584,6 +2527,8 @@ const App: React.FC = () => {
                               "query {\n  users {\n    id\n    name\n  }\n}"
                             }
                             className="graphql-query"
+                            variables={activeEnv?.variables ?? []}
+                            envName={activeEnv?.name}
                           />
                         </div>
                         <div className="graphql-section">
@@ -2611,6 +2556,8 @@ const App: React.FC = () => {
                             placeholder='{"id": 1}'
                             className="graphql-variables"
                             showFormatButton
+                            variables={activeEnv?.variables ?? []}
+                            envName={activeEnv?.name}
                           />
                         </div>
                       </div>
@@ -2880,14 +2827,6 @@ const App: React.FC = () => {
               </div>
             </div>
           </>
-        )}
-
-        {sidebarSection !== "flows" && !hasVisibleTabs && (
-          <div className="flow-empty-state">
-            {sidebarSection === "history"
-              ? "Click a history entry to open it here"
-              : "Click a request or press + to get started"}
-          </div>
         )}
 
         {sidebarSection === "flows" && (

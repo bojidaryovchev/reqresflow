@@ -368,6 +368,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 ×
                               </button>
                             </div>
+                            <button
+                              className="sidebar-icon-btn request-play-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const payloadId =
+                                  req.activePayloadId ||
+                                  req.payloads?.[0]?.id;
+                                if (payloadId) {
+                                  onRunVariant(
+                                    req,
+                                    collection.id,
+                                    req.id,
+                                    payloadId,
+                                  );
+                                }
+                              }}
+                              title="Send request"
+                            >
+                              ▶
+                            </button>
                           </div>
                           {hasVariants && (
                             <div className="request-variants">
@@ -497,6 +517,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <div className="history-item-url">{entry.url}</div>
                 <div className="history-item-timestamp">
+                  {entry.flowName && (
+                    <span className="history-flow-badge">{entry.flowName}</span>
+                  )}
                   {formatTimestamp(entry.timestamp)}
                 </div>
               </div>

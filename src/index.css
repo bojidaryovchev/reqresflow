@@ -850,6 +850,60 @@ button {
   border-top: 1px solid var(--border);
 }
 
+/* ── CodeMirror Env Var Tooltip ── */
+.cm-env-var-tooltip {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 8px 12px;
+  font-size: 12px;
+  min-width: 180px;
+  max-width: 340px;
+}
+
+.cm-env-var-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.cm-env-var-tooltip-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.cm-env-var-tooltip-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.cm-env-var-tooltip-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.cm-env-var-tooltip-warning {
+  color: #f0ad4e;
+  font-size: 11px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+/* Override CodeMirror tooltip container to match theme */
+.cm-tooltip {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
 .autosuggest-dropdown {
   position: fixed;
   max-height: 220px;
@@ -1148,9 +1202,13 @@ button {
   border-radius: var(--radius);
 }
 
-.code-editor-wrapper .cm-editor {
+.code-editor-wrapper > div {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+}
+
+.code-editor-wrapper .cm-editor {
+  height: 100%;
 }
 
 .code-editor-wrapper .cm-editor.cm-focused {
@@ -1235,7 +1293,9 @@ button {
 
 .response-body {
   flex: 1;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 12px 16px;
 }
 
@@ -1467,6 +1527,16 @@ button {
 }
 
 .request-variant-play:hover {
+  color: var(--method-get);
+}
+
+.request-play-btn {
+  font-size: 9px;
+  color: var(--method-post);
+  flex-shrink: 0;
+}
+
+.request-play-btn:hover {
   color: var(--method-get);
 }
 
@@ -1847,6 +1917,22 @@ button {
   font-size: 10px;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+.history-flow-badge {
+  display: inline-block;
+  background: #31374333;
+  color: #9b59b6;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #9b59b644;
+  margin-right: 6px;
+  vertical-align: middle;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Request Tabs Bar ── */

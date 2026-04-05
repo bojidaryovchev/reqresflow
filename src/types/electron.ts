@@ -107,6 +107,7 @@ export interface HistoryEntry {
   statusText: string;
   time: number;
   request: SavedRequest;
+  flowName?: string;
 }
 
 export interface FlowStep {
@@ -190,7 +191,6 @@ export interface RequestTab {
   savedToCollectionId: string | null;
   savedRequestId: string | null;
   sourceHistoryId: string | null;
-  tabSource: "collections" | "history";
   isDirty: boolean;
 }
 
