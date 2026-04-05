@@ -5,11 +5,17 @@ import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
 import CodeEditor from "./components/CodeEditor";
 import Sidebar from "./components/Sidebar";
+import FlowEditor from "./components/FlowEditor";
+import FlowRunner from "./components/FlowRunner";
 import {
   AuthConfig,
   BodyType,
   Collection,
   Environment,
+  Flow,
+  FlowRunState,
+  FlowRunStepResult,
+  FlowStepExecutionDetail,
   HistoryEntry,
   Payload,
   RawLanguage,
@@ -274,6 +280,16 @@ const App: React.FC = () => {
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
+  // Flows
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [flowView, setFlowView] = useState<
+    | { mode: "none" }
+    | { mode: "editor"; flow: Flow }
+    | { mode: "runner"; flow: Flow }
+  >({ mode: "none" });
+  const [flowRunState, setFlowRunState] = useState<FlowRunState | null>(null);
+  const flowAbortRef = useRef(false);
+
   // Save-to-collection picker
   const [showSavePicker, setShowSavePicker] = useState(false);
 
@@ -393,10 +409,12 @@ const App: React.FC = () => {
       window.electronAPI.loadEnvironments(),
       window.electronAPI.loadHistory(),
       window.electronAPI.loadSession(),
-    ]).then(([cols, envs, hist, session]) => {
+      window.electronAPI.loadFlows(),
+    ]).then(([cols, envs, hist, session, loadedFlows]) => {
       setCollections(cols);
       setEnvironments(envs);
       setHistory(hist);
+      setFlows(loadedFlows);
 
       if (session && session.tabs && session.tabs.length > 0) {
         // Migrate old session tabs that may be missing new fields
@@ -766,6 +784,26 @@ const App: React.FC = () => {
       return;
     }
 
+    // Verify the linked collection and request still exist
+    const linkedCollection = collections.find(
+      (c) => c.id === tab.savedToCollectionId,
+    );
+    const linkedRequest = linkedCollection?.requests.find(
+      (r) => r.id === tab.savedRequestId,
+    );
+    if (!linkedCollection || !linkedRequest) {
+      // Clear stale references and show the picker
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === tab.id
+            ? { ...t, savedToCollectionId: undefined, savedRequestId: undefined }
+            : t,
+        ),
+      );
+      setShowSavePicker(true);
+      return;
+    }
+
     const request = getCurrentRequest();
     const updated = collections.map((c) => {
       if (c.id !== tab.savedToCollectionId) return c;
@@ -820,6 +858,430 @@ const App: React.FC = () => {
       setShowSavePicker(false);
     },
     [activeTab, collections, getCurrentRequest],
+  );
+
+  // ── Flow management ──
+  const handleFlowsChange = useCallback((updated: Flow[]) => {
+    setFlows(updated);
+    window.electronAPI.saveFlows(updated);
+  }, []);
+
+  const handleCreateFlow = useCallback(() => {
+    const newFlow: Flow = {
+      id: generateId(),
+      name: "New Flow",
+      steps: [],
+    };
+    setFlows((prev) => {
+      const updated = [...prev, newFlow];
+      window.electronAPI.saveFlows(updated);
+      return updated;
+    });
+    setFlowView({ mode: "editor", flow: newFlow });
+  }, []);
+
+  const handleSaveFlow = useCallback(
+    (flow: Flow) => {
+      setFlows((prev) => {
+        const exists = prev.find((f) => f.id === flow.id);
+        const updated = exists
+          ? prev.map((f) => (f.id === flow.id ? flow : f))
+          : [...prev, flow];
+        window.electronAPI.saveFlows(updated);
+        return updated;
+      });
+      setFlowView({ mode: "editor", flow });
+    },
+    [],
+  );
+
+  const handleEditFlow = useCallback((flow: Flow) => {
+    setFlowView({ mode: "editor", flow });
+  }, []);
+
+  // Helper to find a request by collection + request ID
+  const findRequest = useCallback(
+    (collectionId: string, requestId: string): SavedRequest | null => {
+      const col = collections.find((c) => c.id === collectionId);
+      if (!col) return null;
+      return col.requests.find((r) => r.id === requestId) || null;
+    },
+    [collections],
+  );
+
+  // Build and execute a single request from a SavedRequest (reusable for flows)
+  const executeRequest = useCallback(
+    async (
+      req: SavedRequest,
+      vars: { key: string; value: string }[],
+    ): Promise<{
+      detail: FlowStepExecutionDetail;
+      updatedVars: { key: string; value: string }[];
+      captures: ResponseCapture[];
+    }> => {
+      // Build URL
+      const baseUrl = substituteVars(getBaseUrl(req.url.trim()), vars);
+      const enabledParams = (req.params || []).filter(
+        (p) => p.enabled && p.key.trim(),
+      );
+      let fullUrl = baseUrl;
+      if (enabledParams.length > 0) {
+        const qs = enabledParams
+          .map(
+            (p) =>
+              `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`,
+          )
+          .join("&");
+        fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
+      }
+
+      // Build headers
+      const headerObj: Record<string, string> = {
+        "User-Agent": "ReqResFlow/1.0",
+        Accept: "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
+        Connection: "keep-alive",
+      };
+      (req.headers || [])
+        .filter((h) => h.enabled && h.key.trim())
+        .forEach((h) => {
+          headerObj[substituteVars(h.key, vars)] = substituteVars(
+            h.value,
+            vars,
+          );
+        });
+
+      // Apply auth
+      const auth = req.auth || { type: "none" as const };
+      if (auth.type === "bearer" && auth.token.trim()) {
+        headerObj["Authorization"] =
+          `Bearer ${substituteVars(auth.token.trim(), vars)}`;
+      } else if (
+        auth.type === "basic" &&
+        (auth.username.trim() || auth.password.trim())
+      ) {
+        const user = substituteVars(auth.username, vars);
+        const pass = substituteVars(auth.password, vars);
+        headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
+      }
+
+      // Resolve body
+      const bodyType = req.bodyType || "none";
+      const payload =
+        req.payloads && req.payloads.length > 0
+          ? (req.payloads.find((p) => p.id === req.activePayloadId) ||
+            req.payloads[0])
+          : null;
+
+      const resolvedBody = (() => {
+        if (!["POST", "PUT", "PATCH"].includes(req.method)) return undefined;
+        if (bodyType === "none") return undefined;
+        if (bodyType === "raw") {
+          return substituteVars(payload?.body || req.body || "", vars);
+        }
+        if (bodyType === "graphql" && payload) {
+          const q = substituteVars(payload.graphql.query, vars);
+          const v = payload.graphql.variables.trim()
+            ? substituteVars(payload.graphql.variables, vars)
+            : undefined;
+          try {
+            return JSON.stringify({
+              query: q,
+              variables: v ? JSON.parse(v) : undefined,
+            });
+          } catch {
+            return JSON.stringify({ query: q, variables: v });
+          }
+        }
+        if (bodyType === "x-www-form-urlencoded" && payload) {
+          const pairs = payload.formData.filter(
+            (f) => f.enabled && f.key.trim(),
+          );
+          return pairs
+            .map(
+              (f) =>
+                `${encodeURIComponent(substituteVars(f.key, vars))}=${encodeURIComponent(substituteVars(f.value, vars))}`,
+            )
+            .join("&");
+        }
+        if (bodyType === "form-data" && payload) {
+          const boundary = `----ReqResFlow${Date.now()}`;
+          const pairs = payload.formData.filter(
+            (f) => f.enabled && f.key.trim(),
+          );
+          let multipart = "";
+          for (const f of pairs) {
+            multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
+          }
+          multipart += `--${boundary}--\r\n`;
+          headerObj["Content-Type"] =
+            `multipart/form-data; boundary=${boundary}`;
+          return multipart;
+        }
+        if (bodyType === "binary" && payload?.binaryFilePath) {
+          return payload.binaryFilePath;
+        }
+        return undefined;
+      })();
+
+      // Set Content-Type
+      const hasContentType = Object.keys(headerObj).some(
+        (k) => k.toLowerCase() === "content-type",
+      );
+      if (resolvedBody && !hasContentType) {
+        if (bodyType === "raw") {
+          const rawLang = req.rawLanguage || payload?.rawLanguage || "json";
+          const langMap: Record<string, string> = {
+            json: "application/json",
+            text: "text/plain",
+            xml: "application/xml",
+            html: "text/html",
+            javascript: "application/javascript",
+          };
+          headerObj["Content-Type"] = langMap[rawLang] || "text/plain";
+        } else if (bodyType === "x-www-form-urlencoded") {
+          headerObj["Content-Type"] = "application/x-www-form-urlencoded";
+        } else if (bodyType === "graphql") {
+          headerObj["Content-Type"] = "application/json";
+        }
+      }
+
+      const detail: FlowStepExecutionDetail = {
+        resolvedUrl: fullUrl,
+        resolvedMethod: req.method,
+        resolvedHeaders: { ...headerObj },
+        resolvedBody,
+        response: null,
+        error: null,
+        capturedValues: [],
+      };
+
+      try {
+        const result = await window.electronAPI.sendRequest({
+          method: req.method,
+          url: fullUrl,
+          headers: headerObj,
+          body: resolvedBody,
+          bodyType,
+        });
+        detail.response = result;
+
+        // Apply captures (request-level)
+        const allCaptures = req.captures || [];
+        const enabledCaptures = allCaptures.filter(
+          (c) => c.enabled && c.varName.trim(),
+        );
+        const updatedVars = [...vars];
+        for (const cap of enabledCaptures) {
+          let value = "";
+          if (cap.source === "status") {
+            value = String(result.status);
+          } else if (cap.source === "header") {
+            const headerKey = Object.keys(result.headers).find(
+              (k) => k.toLowerCase() === cap.path.toLowerCase(),
+            );
+            value = headerKey ? result.headers[headerKey] : "";
+          } else {
+            try {
+              const parsed = JSON.parse(result.body);
+              value = resolvePath(parsed, cap.path);
+            } catch {
+              value = "";
+            }
+          }
+          detail.capturedValues.push({
+            varName: cap.varName.trim(),
+            value,
+            source: cap.source,
+            path: cap.path,
+          });
+          const existing = updatedVars.findIndex(
+            (v) => v.key === cap.varName.trim(),
+          );
+          if (existing >= 0) {
+            updatedVars[existing] = { ...updatedVars[existing], value };
+          } else {
+            updatedVars.push({ key: cap.varName.trim(), value });
+          }
+        }
+
+        return { detail, updatedVars, captures: allCaptures };
+      } catch (err: unknown) {
+        detail.error = err instanceof Error ? err.message : String(err);
+        return { detail, updatedVars: vars, captures: [] };
+      }
+    },
+    [],
+  );
+
+  const runFlow = useCallback(
+    async (flow: Flow) => {
+      flowAbortRef.current = false;
+      setFlowView({ mode: "runner", flow });
+
+      const runState: FlowRunState = {
+        flowId: flow.id,
+        status: "running",
+        currentStepIndex: 0,
+        stepResults: [],
+        startedAt: Date.now(),
+        completedAt: null,
+        totalTime: 0,
+      };
+      setFlowRunState(runState);
+
+      // Get current environment variables (mutable copy for the flow run)
+      let currentVars = activeEnv
+        ? activeEnv.variables.map((v) => ({ ...v }))
+        : [];
+
+      const stepResults: FlowRunStepResult[] = [];
+      let aborted = false;
+
+      for (let i = 0; i < flow.steps.length; i++) {
+        if (flowAbortRef.current) {
+          aborted = true;
+          // Mark remaining steps as skipped
+          for (let j = i; j < flow.steps.length; j++) {
+            const skipStep = flow.steps[j];
+            const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+            stepResults.push({
+              stepId: skipStep.id,
+              stepIndex: j,
+              requestName: skipReq?.name || "Unknown",
+              requestMethod: skipReq?.method || "GET",
+              status: "skipped",
+              execution: null,
+              durationMs: 0,
+            });
+          }
+          break;
+        }
+
+        const step = flow.steps[i];
+        const req = findRequest(step.collectionId, step.requestId);
+
+        // Update run state to show current step
+        setFlowRunState((prev) =>
+          prev ? { ...prev, currentStepIndex: i } : prev,
+        );
+
+        if (!req) {
+          stepResults.push({
+            stepId: step.id,
+            stepIndex: i,
+            requestName: "Missing request",
+            requestMethod: "GET",
+            status: "error",
+            execution: {
+              resolvedUrl: "",
+              resolvedMethod: "GET",
+              resolvedHeaders: {},
+              resolvedBody: undefined,
+              response: null,
+              error: "Request not found in collection (may have been deleted)",
+              capturedValues: [],
+            },
+            durationMs: 0,
+          });
+          if (!step.continueOnError) {
+            // Skip remaining steps
+            for (let j = i + 1; j < flow.steps.length; j++) {
+              const skipStep = flow.steps[j];
+              const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+              stepResults.push({
+                stepId: skipStep.id,
+                stepIndex: j,
+                requestName: skipReq?.name || "Unknown",
+                requestMethod: skipReq?.method || "GET",
+                status: "skipped",
+                execution: null,
+                durationMs: 0,
+              });
+            }
+            break;
+          }
+          continue;
+        }
+
+        // Merge step-level captures into the request
+        const mergedReq: SavedRequest = {
+          ...req,
+          captures: [...(req.captures || []), ...step.captures],
+        };
+
+        const start = performance.now();
+        const { detail, updatedVars } = await executeRequest(
+          mergedReq,
+          currentVars,
+        );
+        const durationMs = Math.round(performance.now() - start);
+
+        currentVars = updatedVars;
+
+        const isError = detail.error !== null;
+        const result: FlowRunStepResult = {
+          stepId: step.id,
+          stepIndex: i,
+          requestName: req.name,
+          requestMethod: req.method,
+          status: isError ? "error" : "success",
+          execution: detail,
+          durationMs,
+        };
+        stepResults.push(result);
+
+        // Update run state in real-time
+        setFlowRunState((prev) =>
+          prev
+            ? {
+                ...prev,
+                stepResults: [...stepResults],
+                totalTime: Math.round(Date.now() - runState.startedAt),
+              }
+            : prev,
+        );
+
+        if (isError && !step.continueOnError) {
+          // Skip remaining steps
+          for (let j = i + 1; j < flow.steps.length; j++) {
+            const skipStep = flow.steps[j];
+            const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+            stepResults.push({
+              stepId: skipStep.id,
+              stepIndex: j,
+              requestName: skipReq?.name || "Unknown",
+              requestMethod: skipReq?.method || "GET",
+              status: "skipped",
+              execution: null,
+              durationMs: 0,
+            });
+          }
+          break;
+        }
+      }
+
+      // Update environment with captured values
+      if (activeEnvId && currentVars.length > 0) {
+        const updatedEnvs = environments.map((env) =>
+          env.id === activeEnvId ? { ...env, variables: currentVars } : env,
+        );
+        setEnvironments(updatedEnvs);
+        window.electronAPI.saveEnvironments(updatedEnvs);
+      }
+
+      const completedAt = Date.now();
+      setFlowRunState({
+        flowId: flow.id,
+        status: aborted ? "aborted" : "completed",
+        currentStepIndex: -1,
+        stepResults,
+        startedAt: runState.startedAt,
+        completedAt,
+        totalTime: Math.round(completedAt - runState.startedAt),
+      });
+    },
+    [activeEnv, activeEnvId, environments, executeRequest, findRequest],
   );
 
   // Ctrl+S / Cmd+S to save
@@ -1025,6 +1487,11 @@ const App: React.FC = () => {
         onClearHistory={clearHistory}
         activeCollectionId={activeTab.savedToCollectionId}
         activeRequestId={activeTab.savedRequestId}
+        flows={flows}
+        onFlowsChange={handleFlowsChange}
+        onEditFlow={handleEditFlow}
+        onRunFlow={runFlow}
+        onCreateFlow={handleCreateFlow}
       />
 
       {/* Main Panel */}
@@ -1895,6 +2362,35 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Flow Editor Overlay */}
+      {flowView.mode === "editor" && (
+        <div className="flow-overlay">
+          <FlowEditor
+            flow={flowView.flow}
+            collections={collections}
+            onSave={handleSaveFlow}
+            onCancel={() => setFlowView({ mode: "none" })}
+            onRun={runFlow}
+          />
+        </div>
+      )}
+
+      {/* Flow Runner Overlay */}
+      {flowView.mode === "runner" && flowRunState && (
+        <div className="flow-overlay">
+          <FlowRunner
+            runState={flowRunState}
+            onClose={() => {
+              setFlowView({ mode: "none" });
+              setFlowRunState(null);
+            }}
+            onAbort={() => {
+              flowAbortRef.current = true;
+            }}
+          />
         </div>
       )}
     </div>

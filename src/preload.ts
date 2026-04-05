@@ -28,4 +28,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   loadSession: () => ipcRenderer.invoke("session:load"),
   saveSession: (session: unknown) =>
     ipcRenderer.invoke("session:save", session),
+
+  // Flows
+  loadFlows: () => ipcRenderer.invoke("flows:load"),
+  saveFlows: (flows: unknown) => ipcRenderer.invoke("flows:save", flows),
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Collection, SavedRequest, HistoryEntry } from "../types/electron";
+import { Collection, Flow, SavedRequest, HistoryEntry } from "../types/electron";
 
 interface SidebarProps {
   collections: Collection[];
@@ -15,9 +15,14 @@ interface SidebarProps {
   onClearHistory: () => void;
   activeCollectionId: string | null;
   activeRequestId: string | null;
+  flows: Flow[];
+  onFlowsChange: (flows: Flow[]) => void;
+  onEditFlow: (flow: Flow) => void;
+  onRunFlow: (flow: Flow) => void;
+  onCreateFlow: () => void;
 }
 
-type SidebarSection = "collections" | "history";
+type SidebarSection = "collections" | "history" | "flows";
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -41,6 +46,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClearHistory,
   activeCollectionId,
   activeRequestId,
+  flows,
+  onFlowsChange,
+  onEditFlow,
+  onRunFlow,
+  onCreateFlow,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
     new Set(),
@@ -155,6 +165,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveSection("collections")}
         >
           Collections
+        </button>
+        <button
+          className={`sidebar-section-tab ${activeSection === "flows" ? "active" : ""}`}
+          onClick={() => setActiveSection("flows")}
+        >
+          Flows
+          {flows.length > 0 && (
+            <span className="history-badge">{flows.length}</span>
+          )}
         </button>
         <button
           className={`sidebar-section-tab ${activeSection === "history" ? "active" : ""}`}
@@ -356,6 +375,65 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="history-item-url">{entry.url}</div>
                 <div className="history-item-timestamp">
                   {formatTimestamp(entry.timestamp)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeSection === "flows" && (
+        <>
+          <div className="sidebar-header">
+            <span className="sidebar-header-title">Flows</span>
+            <button
+              className="sidebar-add-btn"
+              onClick={onCreateFlow}
+              title="New Flow"
+            >
+              +
+            </button>
+          </div>
+          <div className="sidebar-content">
+            {flows.length === 0 && (
+              <div className="sidebar-empty">
+                No flows yet.
+                <br />
+                Click + to create one.
+              </div>
+            )}
+            {flows.map((flow) => (
+              <div className="flow-item" key={flow.id}>
+                <div
+                  className="flow-item-header"
+                  onClick={() => onEditFlow(flow)}
+                >
+                  <span className="flow-item-name">{flow.name}</span>
+                  <span className="flow-item-steps">
+                    {flow.steps.length} step
+                    {flow.steps.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div
+                  className="collection-actions"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="sidebar-icon-btn"
+                    onClick={() => onRunFlow(flow)}
+                    title="Run flow"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    className="sidebar-icon-btn danger"
+                    onClick={() =>
+                      onFlowsChange(flows.filter((f) => f.id !== flow.id))
+                    }
+                    title="Delete flow"
+                  >
+                    ×
+                  </button>
                 </div>
               </div>
             ))}

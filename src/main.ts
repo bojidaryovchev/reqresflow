@@ -87,6 +87,21 @@ ipcMain.handle("session:save", (_event, session: unknown) => {
   fs.writeFileSync(getSessionPath(), JSON.stringify(session), "utf-8");
 });
 
+// ── IPC: Flows ──
+function getFlowsPath(): string {
+  return path.join(getDataDir(), "flows.json");
+}
+
+ipcMain.handle("flows:load", () => {
+  const filePath = getFlowsPath();
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+});
+
+ipcMain.handle("flows:save", (_event, flows: unknown) => {
+  fs.writeFileSync(getFlowsPath(), JSON.stringify(flows, null, 2), "utf-8");
+});
+
 // ── IPC: HTTP Request Handler ──
 ipcMain.handle(
   "send-request",

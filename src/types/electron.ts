@@ -109,6 +109,55 @@ export interface HistoryEntry {
   request: SavedRequest;
 }
 
+export interface FlowStep {
+  id: string;
+  collectionId: string;
+  requestId: string;
+  captures: ResponseCapture[];
+  continueOnError: boolean;
+}
+
+export interface Flow {
+  id: string;
+  name: string;
+  steps: FlowStep[];
+}
+
+export interface FlowStepExecutionDetail {
+  resolvedUrl: string;
+  resolvedMethod: string;
+  resolvedHeaders: Record<string, string>;
+  resolvedBody: string | undefined;
+  response: ResponseData | null;
+  error: string | null;
+  capturedValues: {
+    varName: string;
+    value: string;
+    source: string;
+    path: string;
+  }[];
+}
+
+export interface FlowRunStepResult {
+  stepId: string;
+  stepIndex: number;
+  requestName: string;
+  requestMethod: string;
+  status: "success" | "error" | "skipped";
+  execution: FlowStepExecutionDetail | null;
+  durationMs: number;
+}
+
+export interface FlowRunState {
+  flowId: string;
+  status: "idle" | "running" | "completed" | "aborted";
+  currentStepIndex: number;
+  stepResults: FlowRunStepResult[];
+  startedAt: number;
+  completedAt: number | null;
+  totalTime: number;
+}
+
 export interface SessionState {
   tabs: RequestTab[];
   activeTabId: string;
@@ -147,6 +196,8 @@ declare global {
       saveHistory: (history: HistoryEntry[]) => Promise<void>;
       loadSession: () => Promise<SessionState | null>;
       saveSession: (session: SessionState) => Promise<void>;
+      loadFlows: () => Promise<Flow[]>;
+      saveFlows: (flows: Flow[]) => Promise<void>;
     };
   }
 }
