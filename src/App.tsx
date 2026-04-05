@@ -32,7 +32,7 @@ type ResponsePanel = "body" | "headers";
 
 const SIDEBAR_MIN_WIDTH = 160;
 const SIDEBAR_MAX_WIDTH = 600;
-const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_DEFAULT_WIDTH = 300;
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
