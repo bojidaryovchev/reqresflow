@@ -23,7 +23,10 @@ test.describe("Keyboard Shortcuts", () => {
 
     // Either save picker opens (no collection) or save completes
     // For a fresh app with no collection, the picker should show
-    const pickerVisible = await page.locator(S.savePickerModal).isVisible().catch(() => false);
+    const pickerVisible = await page
+      .locator(S.savePickerModal)
+      .isVisible()
+      .catch(() => false);
     if (pickerVisible) {
       // Close it
       await page.locator(S.savePickerClose).click();

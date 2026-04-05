@@ -18,7 +18,9 @@ test.describe("Sidebar", () => {
   test("section tabs switch between Collections, Flows, and History", async () => {
     // Collections
     await clickSidebarTab(page, "Collections");
-    const collectionsTab = page.locator(`.sidebar-section-tab:has-text("Collections")`);
+    const collectionsTab = page.locator(
+      `.sidebar-section-tab:has-text("Collections")`,
+    );
     await expect(collectionsTab).toHaveClass(/active/);
 
     // Flows
@@ -45,10 +47,17 @@ test.describe("Sidebar", () => {
     expect(handleBox).toBeTruthy();
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
     await page.mouse.down();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await page.mouse.move(handleBox!.x + 100, handleBox!.y + handleBox!.height / 2, { steps: 5 });
+    await page.mouse.move(
+      handleBox!.x + 100,
+      handleBox!.y + handleBox!.height / 2,
+      { steps: 5 },
+    );
     await page.mouse.up();
 
     const newBox = await sidebar.boundingBox();
@@ -63,10 +72,15 @@ test.describe("Sidebar", () => {
 
     // Try to drag way to the left (below minimum)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
     await page.mouse.down();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await page.mouse.move(50, handleBox!.y + handleBox!.height / 2, { steps: 5 });
+    await page.mouse.move(50, handleBox!.y + handleBox!.height / 2, {
+      steps: 5,
+    });
     await page.mouse.up();
 
     const sidebar = page.locator(S.sidebar);
@@ -79,7 +93,9 @@ test.describe("Sidebar", () => {
     await clickSidebarTab(page, "Collections");
 
     // Create a collection
-    const addBtn = page.locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`).first();
+    const addBtn = page
+      .locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`)
+      .first();
     await addBtn.click();
     const renameInput = page.locator(S.renameInput);
     await renameInput.fill("Test");

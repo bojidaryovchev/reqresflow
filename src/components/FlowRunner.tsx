@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { FlowRunState, FlowRunStepResult, RawLanguage } from "../types/electron";
+import {
+  FlowRunState,
+  FlowRunStepResult,
+  RawLanguage,
+} from "../types/electron";
 import CodeEditor from "./CodeEditor";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -40,7 +44,10 @@ function tryPrettyJson(raw: string): string {
   }
 }
 
-function detectLanguage(headers: Record<string, string>, body: string): RawLanguage {
+function detectLanguage(
+  headers: Record<string, string>,
+  body: string,
+): RawLanguage {
   const ct = (
     headers["content-type"] ||
     headers["Content-Type"] ||
@@ -62,11 +69,7 @@ const StepDetail: React.FC<{ result: FlowRunStepResult }> = ({ result }) => {
   const exec = result.execution;
 
   if (!exec) {
-    return (
-      <div className="flow-runner-detail-empty">
-        Step was skipped.
-      </div>
-    );
+    return <div className="flow-runner-detail-empty">Step was skipped.</div>;
   }
 
   const responseBody = exec.response?.body || "";
@@ -160,16 +163,13 @@ const StepDetail: React.FC<{ result: FlowRunStepResult }> = ({ result }) => {
             <span
               style={{
                 color:
-                  METHOD_COLORS[exec.resolvedMethod] ||
-                  "var(--text-secondary)",
+                  METHOD_COLORS[exec.resolvedMethod] || "var(--text-secondary)",
                 fontWeight: 600,
               }}
             >
               {exec.resolvedMethod}
             </span>{" "}
-            <span className="flow-runner-request-url">
-              {exec.resolvedUrl}
-            </span>
+            <span className="flow-runner-request-url">{exec.resolvedUrl}</span>
           </div>
           <div className="flow-runner-response-headers">
             <strong>Headers Sent</strong>
@@ -368,4 +368,5 @@ const FlowRunner: React.FC<FlowRunnerProps> = ({
   );
 };
 
+export { StepDetail };
 export default FlowRunner;

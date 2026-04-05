@@ -24,7 +24,9 @@ test.describe("Collections CRUD", () => {
     await clickSidebarTab(page, "Collections");
 
     // Click the add button in the Collections header
-    const addBtn = page.locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`).first();
+    const addBtn = page
+      .locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`)
+      .first();
     await addBtn.click();
 
     // A collection should appear
@@ -40,7 +42,9 @@ test.describe("Collections CRUD", () => {
     await renameInput.press("Enter");
 
     // Collection name should show "API Tests"
-    await expect(page.locator(S.collectionName).first()).toHaveText("API Tests");
+    await expect(page.locator(S.collectionName).first()).toHaveText(
+      "API Tests",
+    );
   });
 
   test("expand/collapse collection via arrow click", async () => {
@@ -65,7 +69,9 @@ test.describe("Collections CRUD", () => {
     await arrow.click();
 
     // Click the save "+" button on the collection header
-    const collectionSaveBtn = page.locator(`${S.collectionHeader} ${S.sidebarIconBtn}`).first();
+    const collectionSaveBtn = page
+      .locator(`${S.collectionHeader} ${S.sidebarIconBtn}`)
+      .first();
     await collectionSaveBtn.click();
 
     // Request should now appear inside the collection
@@ -74,7 +80,9 @@ test.describe("Collections CRUD", () => {
 
   test("rename request in collection", async () => {
     // Click edit button on the request
-    const requestActions = page.locator(`${S.requestItem} ${S.collectionActions}`).first();
+    const requestActions = page
+      .locator(`${S.requestItem} ${S.collectionActions}`)
+      .first();
     const editBtn = requestActions.locator(S.sidebarIconBtn).first();
     await editBtn.click();
 
@@ -82,11 +90,15 @@ test.describe("Collections CRUD", () => {
     await renameInput.fill("Get All Users");
     await renameInput.press("Enter");
 
-    await expect(page.locator(S.requestName).first()).toHaveText("Get All Users");
+    await expect(page.locator(S.requestName).first()).toHaveText(
+      "Get All Users",
+    );
   });
 
   test("delete request from collection", async () => {
-    const requestActions = page.locator(`${S.requestItem} ${S.collectionActions}`).first();
+    const requestActions = page
+      .locator(`${S.requestItem} ${S.collectionActions}`)
+      .first();
     const deleteBtn = requestActions.locator(`${S.sidebarIconBtnDanger}`);
     await deleteBtn.click();
 
@@ -94,7 +106,9 @@ test.describe("Collections CRUD", () => {
   });
 
   test("delete collection removes it from list", async () => {
-    const collectionActions = page.locator(`${S.collectionHeader} ${S.collectionActions}`).first();
+    const collectionActions = page
+      .locator(`${S.collectionHeader} ${S.collectionActions}`)
+      .first();
     const deleteBtn = collectionActions.locator(`${S.sidebarIconBtnDanger}`);
     await deleteBtn.click();
 

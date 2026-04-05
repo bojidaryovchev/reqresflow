@@ -1,4 +1,8 @@
-import { _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import {
+  _electron as electron,
+  type ElectronApplication,
+  type Page,
+} from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
@@ -11,7 +15,10 @@ let tempDataDir: string;
  * Launch the Electron app with an isolated data directory.
  * The main process is the Vite-built output at .vite/build/main.js.
  */
-export async function launchApp(): Promise<{ app: ElectronApplication; page: Page }> {
+export async function launchApp(): Promise<{
+  app: ElectronApplication;
+  page: Page;
+}> {
   // Create isolated temp dir so tests don't pollute real user data
   tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "reqresflow-e2e-"));
 
@@ -56,7 +63,11 @@ export async function closeApp(): Promise<void> {
 export function seedData(filename: string, data: unknown): void {
   const dataDir = path.join(tempDataDir, "reqresflow-data");
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(path.join(dataDir, filename), JSON.stringify(data, null, 2), "utf-8");
+  fs.writeFileSync(
+    path.join(dataDir, filename),
+    JSON.stringify(data, null, 2),
+    "utf-8",
+  );
 }
 
 /**

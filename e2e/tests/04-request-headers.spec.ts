@@ -17,7 +17,9 @@ test.afterAll(async () => {
 test.describe("Request Headers", () => {
   test("Headers panel shows KeyValueEditor", async () => {
     await clickRequestTab(page, "Headers");
-    await expect(page.locator(`${S.requestSection} ${S.kvEditor}`)).toBeVisible();
+    await expect(
+      page.locator(`${S.requestSection} ${S.kvEditor}`),
+    ).toBeVisible();
   });
 
   test("add header row via Add button", async () => {

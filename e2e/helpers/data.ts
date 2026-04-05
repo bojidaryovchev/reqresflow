@@ -95,21 +95,30 @@ export function makeFlow(overrides: Record<string, unknown> = {}) {
 /**
  * Click a request panel tab by name (Params, Headers, Body, Auth, Captures).
  */
-export async function clickRequestTab(page: Page, tabName: string): Promise<void> {
+export async function clickRequestTab(
+  page: Page,
+  tabName: string,
+): Promise<void> {
   await page.click(`.request-section .tab:has-text("${tabName}")`);
 }
 
 /**
  * Click a response panel tab by name (Body, Headers).
  */
-export async function clickResponseTab(page: Page, tabName: string): Promise<void> {
+export async function clickResponseTab(
+  page: Page,
+  tabName: string,
+): Promise<void> {
   await page.click(`.response-section .tab:has-text("${tabName}")`);
 }
 
 /**
  * Click a sidebar section tab (Collections, Flows, History).
  */
-export async function clickSidebarTab(page: Page, tabName: string): Promise<void> {
+export async function clickSidebarTab(
+  page: Page,
+  tabName: string,
+): Promise<void> {
   await page.click(`.sidebar-section-tab:has-text("${tabName}")`);
 }
 
@@ -154,6 +163,10 @@ export async function clickSave(page: Page): Promise<void> {
 /**
  * Wait for a selector to be visible on the page.
  */
-export async function waitForVisible(page: Page, selector: string, timeout = 5_000): Promise<void> {
+export async function waitForVisible(
+  page: Page,
+  selector: string,
+  timeout = 5_000,
+): Promise<void> {
   await page.waitForSelector(selector, { state: "visible", timeout });
 }

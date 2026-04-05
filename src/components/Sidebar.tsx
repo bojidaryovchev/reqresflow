@@ -14,7 +14,7 @@ interface SidebarProps {
     collectionId?: string,
     requestId?: string,
   ) => void;
-  onSaveRequest: () => SavedRequest;
+  onSaveRequest: () => SavedRequest | null;
   history: HistoryEntry[];
   onLoadHistory: (entry: HistoryEntry) => void;
   onClearHistory: () => void;
@@ -38,8 +38,10 @@ interface SidebarProps {
     payloadId: string,
     name: string,
   ) => void;
+  onRequestPanelChange: (panel: string) => void;
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
+  activeFlowId: string | null;
   style?: React.CSSProperties;
 }
 
@@ -77,8 +79,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRenameFlow,
   onRunVariant,
   onRenamePayload,
+  onRequestPanelChange,
   activeSection,
   onSectionChange,
+  activeFlowId,
   style,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
@@ -121,6 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const saveToCollection = (collectionId: string) => {
     const request = onSaveRequest();
+    if (!request) return;
     const updated = collections.map((c) => {
       if (c.id !== collectionId) return c;
       return {
@@ -373,8 +378,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const payloadId =
-                                  req.activePayloadId ||
-                                  req.payloads?.[0]?.id;
+                                  req.activePayloadId || req.payloads?.[0]?.id;
                                 if (payloadId) {
                                   onRunVariant(
                                     req,
@@ -395,13 +399,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 <div
                                   className="request-variant-item"
                                   key={payload.id}
-                                  onClick={() =>
+                                  onClick={() => {
                                     onLoadRequest(
                                       { ...req, activePayloadId: payload.id },
                                       collection.id,
                                       req.id,
-                                    )
-                                  }
+                                    );
+                                    onRequestPanelChange("body");
+                                  }}
                                 >
                                   {editingId === payload.id ? (
                                     <input
@@ -549,7 +554,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
             {flows.map((flow) => (
-              <div className="flow-item" key={flow.id}>
+              <div
+                className={`flow-item${activeFlowId === flow.id ? " active" : ""}`}
+                key={flow.id}
+              >
                 <div
                   className="flow-item-header"
                   onClick={() => onEditFlow(flow)}

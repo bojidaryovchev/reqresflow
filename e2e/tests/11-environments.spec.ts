@@ -107,7 +107,9 @@ test.describe("Environments", () => {
 
   test("delete environment from the modal", async () => {
     await page.click(S.envManageBtn);
-    const deleteBtn = page.locator(`${S.envListItem} ${S.sidebarIconBtnDanger}`).first();
+    const deleteBtn = page
+      .locator(`${S.envListItem} ${S.sidebarIconBtnDanger}`)
+      .first();
     await deleteBtn.click();
 
     await expect(page.locator(S.envListItem)).toHaveCount(0);

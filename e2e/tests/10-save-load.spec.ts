@@ -38,7 +38,9 @@ test.describe("Save & Load Requests", () => {
   test("create collection then save request to it via picker", async () => {
     // Create a collection first
     await clickSidebarTab(page, "Collections");
-    const addBtn = page.locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`).first();
+    const addBtn = page
+      .locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`)
+      .first();
     await addBtn.click();
     const renameInput = page.locator(S.renameInput);
     await renameInput.fill("My API");

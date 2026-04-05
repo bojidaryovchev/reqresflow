@@ -58,7 +58,9 @@ test.describe("Request Body", () => {
   });
 
   test('selecting "x-www-form-urlencoded" shows key/value table without type column', async () => {
-    await page.locator(`${S.bodyTypeOption}:has-text("x-www-form-urlencoded")`).click();
+    await page
+      .locator(`${S.bodyTypeOption}:has-text("x-www-form-urlencoded")`)
+      .click();
 
     await expect(page.locator(S.formDataEditor)).toBeVisible();
     // Should NOT have type select
@@ -128,7 +130,9 @@ test.describe("Request Body", () => {
 
   test("remove payload tab works when multiple exist", async () => {
     // Close the 2nd payload
-    const closeBtn = page.locator(`${S.payloadTab}:nth-child(2) ${S.payloadTabClose}`);
+    const closeBtn = page.locator(
+      `${S.payloadTab}:nth-child(2) ${S.payloadTabClose}`,
+    );
     await closeBtn.click();
 
     await expect(page.locator(S.payloadTab)).toHaveCount(1);

@@ -16,7 +16,15 @@ test.afterAll(async () => {
 
 test.describe("URL & Method", () => {
   test("method dropdown cycles through all HTTP methods", async () => {
-    const methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+    const methods = [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS",
+    ];
     for (const method of methods) {
       await selectMethod(page, method);
       await expect(page.locator(S.methodSelect)).toHaveValue(method);
@@ -82,7 +90,9 @@ test.describe("URL & Method", () => {
     const removeBtn = page.locator(S.kvRow).first().locator(S.kvRemoveBtn);
     await removeBtn.click();
 
-    const newUrl = await page.locator(`${S.urlBar} .autosuggest-wrapper input`).inputValue();
+    const newUrl = await page
+      .locator(`${S.urlBar} .autosuggest-wrapper input`)
+      .inputValue();
     expect(newUrl).not.toContain("testKey");
   });
 });

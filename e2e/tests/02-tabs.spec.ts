@@ -84,7 +84,9 @@ test.describe("Tab Management", () => {
     // Context menu should still be open from previous test, reopen to be safe
     const tab = page.locator(S.tabItem).first();
     await tab.click({ button: "right" });
-    await page.click(`${S.tabContextMenu} button:has-text("Duplicate Request")`);
+    await page.click(
+      `${S.tabContextMenu} button:has-text("Duplicate Request")`,
+    );
 
     // Should now have 2 tabs
     await expect(page.locator(S.tabItem)).toHaveCount(2);

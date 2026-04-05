@@ -29,7 +29,10 @@ test.describe("Session Persistence", () => {
     await page.waitForTimeout(500);
 
     // Verify session file was written
-    const sessionData = readData("session.json") as { tabs: unknown[]; activeTabId: string } | null;
+    const sessionData = readData("session.json") as {
+      tabs: unknown[];
+      activeTabId: string;
+    } | null;
     expect(sessionData).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(sessionData!.tabs).toHaveLength(2);

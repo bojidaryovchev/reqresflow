@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { launchApp, closeApp } from "../helpers/app";
 import { S } from "../helpers/selectors";
-import { typeUrl, sendRequest, clickSidebarTab, TEST_URLS } from "../helpers/data";
+import {
+  typeUrl,
+  sendRequest,
+  clickSidebarTab,
+  TEST_URLS,
+} from "../helpers/data";
 import type { Page } from "@playwright/test";
 
 let page: Page;

@@ -14,7 +14,10 @@ import {
   type ViewUpdate,
   type Tooltip,
 } from "@codemirror/view";
-import { autocompletion, type CompletionContext } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  type CompletionContext,
+} from "@codemirror/autocomplete";
 import { RangeSetBuilder } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import type { RawLanguage } from "../types/electron";
@@ -171,7 +174,11 @@ function buildEnvVarDecorations(view: EditorView): DecorationSet {
     const text = view.state.doc.sliceString(from, to);
     let match: RegExpExecArray | null;
     while ((match = regex.exec(text)) !== null) {
-      builder.add(from + match.index, from + match.index + match[0].length, envVarMark);
+      builder.add(
+        from + match.index,
+        from + match.index + match[0].length,
+        envVarMark,
+      );
     }
   }
   return builder.finish();
@@ -256,7 +263,8 @@ function envVarHoverTooltip(
             if (!resolved) {
               const warning = document.createElement("div");
               warning.className = "cm-env-var-tooltip-warning";
-              warning.textContent = "Variable not defined in current environment";
+              warning.textContent =
+                "Variable not defined in current environment";
               dom.appendChild(warning);
             }
 

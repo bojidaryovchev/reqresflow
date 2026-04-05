@@ -75,7 +75,9 @@ test.describe("Flows", () => {
     await page.locator(S.modalOverlay).click({ position: { x: 5, y: 5 } });
 
     // Close the flow editor
-    await page.click(`${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Back")`);
+    await page.click(
+      `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Back")`,
+    );
     await expect(page.locator(S.flowOverlay)).toBeHidden();
 
     // Set up a collection with a request for flow step picking
@@ -103,7 +105,9 @@ test.describe("Flows", () => {
   });
 
   test("save flow and verify it appears in sidebar", async () => {
-    await page.click(`${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Save")`);
+    await page.click(
+      `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Save")`,
+    );
     await expect(page.locator(S.flowOverlay)).toBeHidden();
 
     await clickSidebarTab(page, "Flows");
@@ -123,9 +127,12 @@ test.describe("Flows", () => {
     await expect(page.locator(S.flowRunnerTitle)).toHaveText("Flow Results");
 
     // Wait for flow to complete
-    await page.waitForSelector(`${S.flowRunnerSummary}:not(:has(.flow-runner-running))`, {
-      timeout: 15_000,
-    });
+    await page.waitForSelector(
+      `${S.flowRunnerSummary}:not(:has(.flow-runner-running))`,
+      {
+        timeout: 15_000,
+      },
+    );
 
     // Should show step results
     const steps = page.locator(S.flowRunnerStep);
@@ -144,7 +151,9 @@ test.describe("Flows", () => {
     expect(tabTexts.some((t) => t.includes("Captures"))).toBe(true);
 
     // Close the runner
-    await page.click(`${S.flowRunnerHeader} ${S.flowEditorBtnSecondary}:has-text("Close")`);
+    await page.click(
+      `${S.flowRunnerHeader} ${S.flowEditorBtnSecondary}:has-text("Close")`,
+    );
     await expect(page.locator(S.flowRunner)).toBeHidden();
   });
 });

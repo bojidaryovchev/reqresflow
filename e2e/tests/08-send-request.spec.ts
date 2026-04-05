@@ -1,7 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { launchApp, closeApp } from "../helpers/app";
 import { S } from "../helpers/selectors";
-import { typeUrl, selectMethod, sendRequest, clickRequestTab, clickResponseTab, TEST_URLS } from "../helpers/data";
+import {
+  typeUrl,
+  selectMethod,
+  sendRequest,
+  clickRequestTab,
+  clickResponseTab,
+  TEST_URLS,
+} from "../helpers/data";
 import type { Page } from "@playwright/test";
 
 let page: Page;
@@ -80,7 +87,8 @@ test.describe("Send Request & Response", () => {
 
     // Wait for request to complete
     await page.waitForFunction(
-      () => !document.querySelector(".send-btn")?.textContent?.includes("Sending"),
+      () =>
+        !document.querySelector(".send-btn")?.textContent?.includes("Sending"),
       { timeout: 15_000 },
     );
   });
@@ -130,7 +138,9 @@ test.describe("Send Request & Response", () => {
     await typeUrl(page, TEST_URLS.post);
 
     await clickRequestTab(page, "Body");
-    await page.locator(`${S.bodyTypeOption}:has-text("x-www-form-urlencoded")`).click();
+    await page
+      .locator(`${S.bodyTypeOption}:has-text("x-www-form-urlencoded")`)
+      .click();
 
     // Fill first form field
     const firstRow = page.locator(S.formDataRow).first();

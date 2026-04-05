@@ -48,7 +48,9 @@ test.describe("AutoSuggest & Environment Variables", () => {
     await urlInput.fill("https://{{");
 
     // Dropdown should appear with matching variables
-    await expect(page.locator(S.autosuggestDropdown)).toBeVisible({ timeout: 3_000 });
+    await expect(page.locator(S.autosuggestDropdown)).toBeVisible({
+      timeout: 3_000,
+    });
 
     const items = page.locator(S.autosuggestItem);
     const count = await items.count();
@@ -64,7 +66,9 @@ test.describe("AutoSuggest & Environment Variables", () => {
     await urlInput.type("https://{{base");
 
     // Wait for dropdown
-    await expect(page.locator(S.autosuggestDropdown)).toBeVisible({ timeout: 3_000 });
+    await expect(page.locator(S.autosuggestDropdown)).toBeVisible({
+      timeout: 3_000,
+    });
 
     // Click the first suggestion
     await page.locator(S.autosuggestItem).first().click();
@@ -83,7 +87,9 @@ test.describe("AutoSuggest & Environment Variables", () => {
     await expect(wrapper).toHaveClass(/has-vars/);
 
     // Variable highlight should be rendered
-    await expect(page.locator(`${S.urlBar} ${S.envVarHighlight}`)).toBeVisible();
+    await expect(
+      page.locator(`${S.urlBar} ${S.envVarHighlight}`),
+    ).toBeVisible();
   });
 
   test("hovering variable highlight shows tooltip with value", async () => {

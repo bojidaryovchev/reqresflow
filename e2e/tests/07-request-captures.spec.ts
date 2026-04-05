@@ -63,7 +63,9 @@ test.describe("Response Captures", () => {
   });
 
   test("toggle capture enabled/disabled via checkbox", async () => {
-    const checkbox = page.locator(`${S.captureRow} input[type="checkbox"]`).first();
+    const checkbox = page
+      .locator(`${S.captureRow} input[type="checkbox"]`)
+      .first();
 
     // Should start checked (enabled)
     await expect(checkbox).toBeChecked();
