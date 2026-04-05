@@ -169,6 +169,7 @@ function createEmptyTab(): RequestTabType {
     auth: { type: "none" },
     savedToCollectionId: null,
     savedRequestId: null,
+    sourceHistoryId: null,
     isDirty: false,
   };
 }
@@ -298,6 +299,9 @@ const App: React.FC = () => {
   const [flowRunState, setFlowRunState] = useState<FlowRunState | null>(null);
   const flowAbortRef = useRef(false);
 
+  // Pending send after loading a variant
+  const pendingSendRef = useRef<string | null>(null);
+
   // Save-to-collection picker
   const [showSavePicker, setShowSavePicker] = useState(false);
 
@@ -394,6 +398,7 @@ const App: React.FC = () => {
         error: null,
         savedToCollectionId: null,
         savedRequestId: null,
+        sourceHistoryId: null,
         isDirty: false,
       };
       const idx = prev.findIndex((t) => t.id === id);
@@ -465,6 +470,7 @@ const App: React.FC = () => {
           auth: t.auth || { type: "none" as const },
           savedToCollectionId: t.savedToCollectionId ?? null,
           savedRequestId: t.savedRequestId ?? null,
+          sourceHistoryId: (t as RequestTabType).sourceHistoryId ?? null,
           isDirty: t.isDirty ?? false,
           payloads: (t.payloads || []).map((p) => ({
             ...p,
@@ -721,7 +727,7 @@ const App: React.FC = () => {
 
   // Load a saved request into a new tab
   const loadRequest = useCallback(
-    (req: SavedRequest, collectionId?: string, requestId?: string) => {
+    (req: SavedRequest, collectionId?: string, requestId?: string, historyId?: string) => {
       // If this request is already open in a tab, just focus it
       if (collectionId && requestId) {
         const existing = tabs.find(
@@ -731,13 +737,26 @@ const App: React.FC = () => {
         );
         if (existing) {
           // Sync name from saved request if it differs
-          if (existing.name !== req.name) {
+          if (existing.name !== req.name || (req.activePayloadId && existing.activePayloadId !== req.activePayloadId)) {
             setTabs((prev) =>
               prev.map((t) =>
-                t.id === existing.id ? { ...t, name: req.name } : t,
+                t.id === existing.id
+                  ? {
+                      ...t,
+                      name: req.name,
+                      ...(req.activePayloadId ? { activePayloadId: req.activePayloadId } : {}),
+                    }
+                  : t,
               ),
             );
           }
+          setActiveTabId(existing.id);
+          return;
+        }
+      }
+      if (historyId) {
+        const existing = tabs.find((t) => t.sourceHistoryId === historyId);
+        if (existing) {
           setActiveTabId(existing.id);
           return;
         }
@@ -792,6 +811,7 @@ const App: React.FC = () => {
         auth: req.auth || { type: "none" },
         savedToCollectionId: collectionId || null,
         savedRequestId: requestId || null,
+        sourceHistoryId: historyId || null,
         isDirty: false,
       };
       setTabs((prev) => [...prev, newTab]);
@@ -800,10 +820,28 @@ const App: React.FC = () => {
     [tabs],
   );
 
-  // Load a history entry into a new tab
+  // Load a history entry into a tab (reuses if already open)
   const loadHistoryEntry = useCallback(
     (entry: HistoryEntry) => {
-      loadRequest(entry.request);
+      loadRequest(entry.request, undefined, undefined, entry.id);
+    },
+    [loadRequest],
+  );
+
+  // Load a request with a specific payload variant and immediately send it
+  const runVariant = useCallback(
+    (
+      req: SavedRequest,
+      collectionId: string,
+      requestId: string,
+      payloadId: string,
+    ) => {
+      loadRequest(
+        { ...req, activePayloadId: payloadId },
+        collectionId,
+        requestId,
+      );
+      pendingSendRef.current = payloadId;
     },
     [loadRequest],
   );
@@ -1505,6 +1543,14 @@ const App: React.FC = () => {
     applyCaptures,
   ]);
 
+  // Auto-send when a variant run was triggered
+  useEffect(() => {
+    if (pendingSendRef.current && activeTab.activePayloadId === pendingSendRef.current) {
+      pendingSendRef.current = null;
+      sendRequest();
+    }
+  }, [activeTab.activePayloadId, activeTab.id, sendRequest]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendRequest();
   };
@@ -1531,6 +1577,7 @@ const App: React.FC = () => {
         onEditFlow={handleEditFlow}
         onRunFlow={runFlow}
         onCreateFlow={handleCreateFlow}
+        onRunVariant={runVariant}
         style={{ width: sidebarWidth }}
       />
 

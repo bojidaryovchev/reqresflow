@@ -181,6 +181,7 @@ export interface RequestTab {
   auth: AuthConfig;
   savedToCollectionId: string | null;
   savedRequestId: string | null;
+  sourceHistoryId: string | null;
   isDirty: boolean;
 }
 

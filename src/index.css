@@ -1433,6 +1433,41 @@ button {
   color: var(--text-secondary);
 }
 
+.request-variants {
+  /* no padding — items span full width like request-item */
+}
+
+.request-variant-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 50px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.request-variant-item:hover {
+  background: var(--bg-hover);
+}
+
+.request-variant-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-variant-play {
+  font-size: 9px;
+  color: var(--method-post);
+}
+
+.request-variant-play:hover {
+  color: var(--method-get);
+}
+
 .rename-input {
   flex: 1;
   background: var(--bg-input);

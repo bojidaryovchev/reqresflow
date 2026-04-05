@@ -20,6 +20,12 @@ interface SidebarProps {
   onEditFlow: (flow: Flow) => void;
   onRunFlow: (flow: Flow) => void;
   onCreateFlow: () => void;
+  onRunVariant: (
+    request: SavedRequest,
+    collectionId: string,
+    requestId: string,
+    payloadId: string,
+  ) => void;
   style?: React.CSSProperties;
 }
 
@@ -52,6 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onEditFlow,
   onRunFlow,
   onCreateFlow,
+  onRunVariant,
   style,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
@@ -269,58 +276,98 @@ const Sidebar: React.FC<SidebarProps> = ({
                         Empty collection
                       </div>
                     )}
-                    {collection.requests.map((req) => (
-                      <div
-                        className={`request-item${activeCollectionId === collection.id && activeRequestId === req.id ? " active" : ""}`}
-                        key={req.id}
-                        onClick={() =>
-                          onLoadRequest(req, collection.id, req.id)
-                        }
-                      >
-                        <span
-                          className="request-method-badge"
-                          style={{
-                            color:
-                              METHOD_COLORS[req.method] ||
-                              "var(--text-secondary)",
-                          }}
-                        >
-                          {req.method}
-                        </span>
-                        {editingId === req.id ? (
-                          <input
-                            className="rename-input"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onBlur={commitRename}
-                            onKeyDown={handleRenameKeyDown}
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <span className="request-name">{req.name}</span>
-                        )}
+                    {collection.requests.map((req) => {
+                      const hasVariants = req.payloads && req.payloads.length > 1;
+                      return (
+                      <div key={req.id}>
                         <div
-                          className="collection-actions"
-                          onClick={(e) => e.stopPropagation()}
+                          className={`request-item${activeCollectionId === collection.id && activeRequestId === req.id ? " active" : ""}`}
+                          onClick={() =>
+                            onLoadRequest(req, collection.id, req.id)
+                          }
                         >
-                          <button
-                            className="sidebar-icon-btn"
-                            onClick={() => startRename(req.id, req.name)}
-                            title="Rename"
+                          <span
+                            className="request-method-badge"
+                            style={{
+                              color:
+                                METHOD_COLORS[req.method] ||
+                                "var(--text-secondary)",
+                            }}
                           >
-                            ✎
-                          </button>
-                          <button
-                            className="sidebar-icon-btn danger"
-                            onClick={() => deleteRequest(collection.id, req.id)}
-                            title="Delete request"
+                            {req.method}
+                          </span>
+                          {editingId === req.id ? (
+                            <input
+                              className="rename-input"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onBlur={commitRename}
+                              onKeyDown={handleRenameKeyDown}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span className="request-name">{req.name}</span>
+                          )}
+                          <div
+                            className="collection-actions"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            ×
-                          </button>
+                            <button
+                              className="sidebar-icon-btn"
+                              onClick={() => startRename(req.id, req.name)}
+                              title="Rename"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              className="sidebar-icon-btn danger"
+                              onClick={() => deleteRequest(collection.id, req.id)}
+                              title="Delete request"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
+                        {hasVariants && (
+                          <div className="request-variants">
+                            {req.payloads?.map((payload) => (
+                              <div
+                                className="request-variant-item"
+                                key={payload.id}
+                                onClick={() =>
+                                  onLoadRequest(
+                                    { ...req, activePayloadId: payload.id },
+                                    collection.id,
+                                    req.id,
+                                  )
+                                }
+                              >
+                                <span className="request-variant-name">
+                                  {payload.name}
+                                </span>
+                                <button
+                                  className="sidebar-icon-btn request-variant-play"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRunVariant(
+                                      req,
+                                      collection.id,
+                                      req.id,
+                                      payload.id,
+                                    );
+                                  }}
+                                  title={`Send with ${payload.name}`}
+                                >
+                                  ▶
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
