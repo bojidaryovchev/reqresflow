@@ -29,6 +29,10 @@ type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type RequestPanel = "params" | "headers" | "body" | "auth" | "captures";
 type ResponsePanel = "body" | "headers";
 
+const SIDEBAR_MIN_WIDTH = 160;
+const SIDEBAR_MAX_WIDTH = 600;
+const SIDEBAR_DEFAULT_WIDTH = 260;
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -280,6 +284,10 @@ const App: React.FC = () => {
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
+  // Sidebar resize
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const isResizingRef = useRef(false);
+
   // Flows
   const [flows, setFlows] = useState<Flow[]>([]);
   const [flowView, setFlowView] = useState<
@@ -401,6 +409,37 @@ const App: React.FC = () => {
     setTabs([fresh]);
     setActiveTabId(fresh.id);
   }, []);
+
+  // Sidebar resize handlers
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizingRef.current = true;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!isResizingRef.current) return;
+        const newWidth = Math.min(
+          SIDEBAR_MAX_WIDTH,
+          Math.max(SIDEBAR_MIN_WIDTH, ev.clientX),
+        );
+        setSidebarWidth(newWidth);
+      };
+
+      const onMouseUp = () => {
+        isResizingRef.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [],
+  );
 
   // Load collections, environments, history & session on mount
   useEffect(() => {
@@ -1492,7 +1531,11 @@ const App: React.FC = () => {
         onEditFlow={handleEditFlow}
         onRunFlow={runFlow}
         onCreateFlow={handleCreateFlow}
+        style={{ width: sidebarWidth }}
       />
+
+      {/* Resize Handle */}
+      <div className="sidebar-resize-handle" onMouseDown={handleResizeMouseDown} />
 
       {/* Main Panel */}
       <div className="main-panel">

@@ -20,6 +20,7 @@ interface SidebarProps {
   onEditFlow: (flow: Flow) => void;
   onRunFlow: (flow: Flow) => void;
   onCreateFlow: () => void;
+  style?: React.CSSProperties;
 }
 
 type SidebarSection = "collections" | "history" | "flows";
@@ -51,6 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onEditFlow,
   onRunFlow,
   onCreateFlow,
+  style,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
     new Set(),
@@ -158,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="sidebar">
+    <div className="sidebar" style={style}>
       <div className="sidebar-section-tabs">
         <button
           className={`sidebar-section-tab ${activeSection === "collections" ? "active" : ""}`}
