@@ -1369,7 +1369,8 @@ button {
 }
 
 .collection-header:hover .collection-actions,
-.request-item:hover .collection-actions {
+.request-item:hover .collection-actions,
+.request-variant-item:hover .collection-actions {
   display: flex;
 }
 

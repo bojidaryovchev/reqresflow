@@ -611,6 +611,28 @@ const App: React.FC = () => {
         p.id === id ? { ...p, name } : p,
       ),
     });
+    // Sync with collection
+    if (activeTab.savedToCollectionId && activeTab.savedRequestId) {
+      setCollections((prev) => {
+        const updated = prev.map((c) => {
+          if (c.id !== activeTab.savedToCollectionId) return c;
+          return {
+            ...c,
+            requests: c.requests.map((r) => {
+              if (r.id !== activeTab.savedRequestId || !r.payloads) return r;
+              return {
+                ...r,
+                payloads: r.payloads.map((p) =>
+                  p.id === id ? { ...p, name } : p,
+                ),
+              };
+            }),
+          };
+        });
+        window.electronAPI.saveCollections(updated);
+        return updated;
+      });
+    }
   };
 
   // Capture helpers
@@ -844,6 +866,24 @@ const App: React.FC = () => {
       pendingSendRef.current = payloadId;
     },
     [loadRequest],
+  );
+
+  // Sync payload rename from sidebar to open tab
+  const handleRenamePayload = useCallback(
+    (collectionId: string, requestId: string, payloadId: string, name: string) => {
+      setTabs((prev) =>
+        prev.map((t) => {
+          if (t.savedToCollectionId !== collectionId || t.savedRequestId !== requestId) return t;
+          return {
+            ...t,
+            payloads: t.payloads.map((p) =>
+              p.id === payloadId ? { ...p, name } : p,
+            ),
+          };
+        }),
+      );
+    },
+    [],
   );
 
   const clearHistory = useCallback(() => {
@@ -1578,6 +1618,7 @@ const App: React.FC = () => {
         onRunFlow={runFlow}
         onCreateFlow={handleCreateFlow}
         onRunVariant={runVariant}
+        onRenamePayload={handleRenamePayload}
         style={{ width: sidebarWidth }}
       />
 

@@ -26,6 +26,12 @@ interface SidebarProps {
     requestId: string,
     payloadId: string,
   ) => void;
+  onRenamePayload: (
+    collectionId: string,
+    requestId: string,
+    payloadId: string,
+    name: string,
+  ) => void;
   style?: React.CSSProperties;
 }
 
@@ -59,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRunFlow,
   onCreateFlow,
   onRunVariant,
+  onRenamePayload,
   style,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
@@ -135,14 +142,28 @@ const Sidebar: React.FC<SidebarProps> = ({
       setEditingId(null);
       return;
     }
-    // Check if it's a collection or a request
+    // Check if it's a collection, request, or payload
     const updated = collections.map((c) => {
       if (c.id === editingId) return { ...c, name: editingName.trim() };
       return {
         ...c,
-        requests: c.requests.map((r) =>
-          r.id === editingId ? { ...r, name: editingName.trim() } : r,
-        ),
+        requests: c.requests.map((r) => {
+          if (r.id === editingId) return { ...r, name: editingName.trim() };
+          if (r.payloads) {
+            const hasPayload = r.payloads.some((p) => p.id === editingId);
+            if (hasPayload) {
+              // Find the collection and request this payload belongs to
+              onRenamePayload(c.id, r.id, editingId, editingName.trim());
+              return {
+                ...r,
+                payloads: r.payloads.map((p) =>
+                  p.id === editingId ? { ...p, name: editingName.trim() } : p,
+                ),
+              };
+            }
+          }
+          return r;
+        }),
       };
     });
     onCollectionsChange(updated);
@@ -343,9 +364,39 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   )
                                 }
                               >
-                                <span className="request-variant-name">
-                                  {payload.name}
-                                </span>
+                                {editingId === payload.id ? (
+                                  <input
+                                    className="rename-input"
+                                    value={editingName}
+                                    onChange={(e) => setEditingName(e.target.value)}
+                                    onBlur={commitRename}
+                                    onKeyDown={handleRenameKeyDown}
+                                    autoFocus
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                ) : (
+                                  <span
+                                    className="request-variant-name"
+                                    onDoubleClick={(e) => {
+                                      e.stopPropagation();
+                                      startRename(payload.id, payload.name);
+                                    }}
+                                  >
+                                    {payload.name}
+                                  </span>
+                                )}
+                                <div
+                                  className="collection-actions"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    className="sidebar-icon-btn"
+                                    onClick={() => startRename(payload.id, payload.name)}
+                                    title="Rename payload"
+                                  >
+                                    ✎
+                                  </button>
+                                </div>
                                 <button
                                   className="sidebar-icon-btn request-variant-play"
                                   onClick={(e) => {
