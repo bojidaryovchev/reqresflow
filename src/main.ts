@@ -10,7 +10,8 @@ if (started) {
 
 // ── Data directory setup ──
 function getDataDir(): string {
-  const dir = path.join(app.getPath("userData"), "reqresflow-data");
+  const base = process.env.ELECTRON_USER_DATA || app.getPath("userData");
+  const dir = path.join(base, "reqresflow-data");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

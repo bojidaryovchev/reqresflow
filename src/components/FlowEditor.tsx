@@ -1,10 +1,5 @@
-import React, { useState } from "react";
-import {
-  Flow,
-  FlowStep,
-  Collection,
-  ResponseCapture,
-} from "../types/electron";
+import React, { useState, useEffect, useRef } from "react";
+import { Flow, FlowStep, Collection, ResponseCapture } from "../types/electron";
 
 interface FlowEditorProps {
   flow: Flow;
@@ -12,6 +7,7 @@ interface FlowEditorProps {
   onSave: (flow: Flow) => void;
   onCancel: () => void;
   onRun: (flow: Flow) => void;
+  onChange?: (flow: Flow) => void;
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -32,11 +28,40 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
   onSave,
   onCancel,
   onRun,
+  onChange,
 }) => {
   const [name, setName] = useState(flow.name);
   const [steps, setSteps] = useState<FlowStep[]>(flow.steps);
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
   const [showRequestPicker, setShowRequestPicker] = useState(false);
+  const isLocalChange = useRef(false);
+
+  // Sync name from props when changed externally (e.g., sidebar rename)
+  useEffect(() => {
+    if (!isLocalChange.current) {
+      setName(flow.name);
+    }
+    isLocalChange.current = false;
+  }, [flow.name]);
+
+  // Notify parent of changes for dirty tracking
+  const notifyChange = (updatedName: string, updatedSteps: FlowStep[]) => {
+    onChange?.({ ...flow, name: updatedName, steps: updatedSteps });
+  };
+
+  const handleNameChange = (newName: string) => {
+    isLocalChange.current = true;
+    setName(newName);
+    notifyChange(newName, steps);
+  };
+
+  const updateSteps = (updater: (prev: FlowStep[]) => FlowStep[]) => {
+    setSteps((prev) => {
+      const updated = updater(prev);
+      notifyChange(name, updated);
+      return updated;
+    });
+  };
 
   const resolveRequest = (step: FlowStep) => {
     const col = collections.find((c) => c.id === step.collectionId);
@@ -52,12 +77,12 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
       captures: [],
       continueOnError: false,
     };
-    setSteps((prev) => [...prev, newStep]);
+    updateSteps((prev) => [...prev, newStep]);
     setShowRequestPicker(false);
   };
 
   const removeStep = (id: string) => {
-    setSteps((prev) => prev.filter((s) => s.id !== id));
+    updateSteps((prev) => prev.filter((s) => s.id !== id));
     if (expandedStepId === id) setExpandedStepId(null);
   };
 
@@ -66,11 +91,11 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
     if (newIndex < 0 || newIndex >= steps.length) return;
     const updated = [...steps];
     [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    setSteps(updated);
+    updateSteps(() => updated);
   };
 
   const toggleContinueOnError = (id: string) => {
-    setSteps((prev) =>
+    updateSteps((prev) =>
       prev.map((s) =>
         s.id === id ? { ...s, continueOnError: !s.continueOnError } : s,
       ),
@@ -85,11 +110,9 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
       source: "body",
       path: "",
     };
-    setSteps((prev) =>
+    updateSteps((prev) =>
       prev.map((s) =>
-        s.id === stepId
-          ? { ...s, captures: [...s.captures, newCapture] }
-          : s,
+        s.id === stepId ? { ...s, captures: [...s.captures, newCapture] } : s,
       ),
     );
   };
@@ -99,7 +122,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
     captureId: string,
     updates: Partial<ResponseCapture>,
   ) => {
-    setSteps((prev) =>
+    updateSteps((prev) =>
       prev.map((s) =>
         s.id === stepId
           ? {
@@ -114,7 +137,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
   };
 
   const removeStepCapture = (stepId: string, captureId: string) => {
-    setSteps((prev) =>
+    updateSteps((prev) =>
       prev.map((s) =>
         s.id === stepId
           ? { ...s, captures: s.captures.filter((c) => c.id !== captureId) }
@@ -139,7 +162,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
         <input
           className="flow-editor-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Flow name..."
         />
         <div className="flow-editor-actions">
@@ -174,9 +197,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
             <div className="flow-step" key={step.id}>
               <div
                 className="flow-step-header"
-                onClick={() =>
-                  setExpandedStepId(isExpanded ? null : step.id)
-                }
+                onClick={() => setExpandedStepId(isExpanded ? null : step.id)}
               >
                 <span className="flow-step-index">{index + 1}</span>
                 {req ? (
@@ -185,8 +206,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
                       className="flow-step-method"
                       style={{
                         color:
-                          METHOD_COLORS[req.method] ||
-                          "var(--text-secondary)",
+                          METHOD_COLORS[req.method] || "var(--text-secondary)",
                       }}
                     >
                       {req.method}
@@ -310,9 +330,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
                         />
                         <button
                           className="flow-step-capture-remove"
-                          onClick={() =>
-                            removeStepCapture(step.id, cap.id)
-                          }
+                          onClick={() => removeStepCapture(step.id, cap.id)}
                         >
                           ×
                         </button>

@@ -4,7 +4,7 @@ import AutoSuggestInput from "./components/AutoSuggestInput";
 import EnvManager from "./components/EnvManager";
 import KeyValueEditor from "./components/KeyValueEditor";
 import CodeEditor from "./components/CodeEditor";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { SidebarSection } from "./components/Sidebar";
 import FlowEditor from "./components/FlowEditor";
 import FlowRunner from "./components/FlowRunner";
 import {
@@ -16,6 +16,7 @@ import {
   FlowRunState,
   FlowRunStepResult,
   FlowStepExecutionDetail,
+  FlowTab,
   HistoryEntry,
   Payload,
   RawLanguage,
@@ -170,6 +171,7 @@ function createEmptyTab(): RequestTabType {
     savedToCollectionId: null,
     savedRequestId: null,
     sourceHistoryId: null,
+    tabSource: "collections",
     isDirty: false,
   };
 }
@@ -233,6 +235,12 @@ function TabItem({
       className={`request-tab-item ${isActive ? "active" : ""}`}
       onClick={onActivate}
       onContextMenu={onContextMenu}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          onClose();
+        }
+      }}
       onPointerDown={(e) => controls.start(e)}
       whileDrag={{ boxShadow: "0 2px 8px rgba(0,0,0,0.32)", zIndex: 1 }}
       transition={{ duration: 0.15 }}
@@ -247,6 +255,65 @@ function TabItem({
         {tab.method}
       </span>
       <span className="request-tab-name">{getTabDisplayName(tab)}</span>
+      {tab.isDirty && (
+        <span className="request-tab-dirty" title="Unsaved changes">
+          ●
+        </span>
+      )}
+      <button
+        className="request-tab-close"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        ×
+      </button>
+    </Reorder.Item>
+  );
+}
+
+interface FlowTabItemProps {
+  tab: FlowTab;
+  isActive: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+}
+
+function FlowTabItem({
+  tab,
+  isActive,
+  onActivate,
+  onClose,
+  onContextMenu,
+}: FlowTabItemProps) {
+  const controls = useDragControls();
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={tab}
+      id={tab.id}
+      dragListener={false}
+      dragControls={controls}
+      className={`request-tab-item ${isActive ? "active" : ""}`}
+      onClick={onActivate}
+      onContextMenu={onContextMenu}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      onPointerDown={(e) => controls.start(e)}
+      whileDrag={{ boxShadow: "0 2px 8px rgba(0,0,0,0.32)", zIndex: 1 }}
+      transition={{ duration: 0.15 }}
+    >
+      <span className="request-tab-name">
+        {tab.mode === "runner" ? "▶ " : ""}
+        {tab.name}
+      </span>
       {tab.isDirty && (
         <span className="request-tab-dirty" title="Unsaved changes">
           ●
@@ -291,13 +358,18 @@ const App: React.FC = () => {
 
   // Flows
   const [flows, setFlows] = useState<Flow[]>([]);
-  const [flowView, setFlowView] = useState<
-    | { mode: "none" }
-    | { mode: "editor"; flow: Flow }
-    | { mode: "runner"; flow: Flow }
-  >({ mode: "none" });
+  const [sidebarSection, setSidebarSection] =
+    useState<SidebarSection>("collections");
+  const [flowTabs, setFlowTabs] = useState<FlowTab[]>([]);
+  const [activeFlowTabId, setActiveFlowTabId] = useState<string | null>(null);
   const [flowRunState, setFlowRunState] = useState<FlowRunState | null>(null);
   const flowAbortRef = useRef(false);
+
+  // Remember last active tab per section
+  const lastActiveTabPerSection = useRef<Record<string, string | null>>({
+    collections: null,
+    history: null,
+  });
 
   // Pending send after loading a variant
   const pendingSendRef = useRef<string | null>(null);
@@ -312,6 +384,14 @@ const App: React.FC = () => {
     tabId: string;
   } | null>(null);
   const tabContextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Flow tab context menu
+  const [flowTabContextMenu, setFlowTabContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId: string;
+  } | null>(null);
+  const flowTabContextMenuRef = useRef<HTMLDivElement>(null);
 
   const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
@@ -352,24 +432,42 @@ const App: React.FC = () => {
   // Tab management
   const addTab = useCallback(() => {
     const newTab = createEmptyTab();
+    newTab.tabSource = sidebarSection === "history" ? "history" : "collections";
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
-  }, []);
+  }, [sidebarSection]);
 
   const closeTab = useCallback(
     (id: string) => {
       setTabs((prev) => {
-        if (prev.length <= 1) {
-          // Can't close last tab — reset it instead
+        const tab = prev.find((t) => t.id === id);
+        const source = tab?.tabSource || "collections";
+        const sameSectionTabs = prev.filter((t) => t.tabSource === source);
+
+        if (sameSectionTabs.length <= 1 && source === "collections") {
+          // Can't close last collections tab — reset it instead
           const fresh = createEmptyTab();
+          const remaining = prev.filter((t) => t.id !== id);
           setActiveTabId(fresh.id);
-          return [fresh];
+          return [...remaining, fresh];
         }
-        const idx = prev.findIndex((t) => t.id === id);
+
+        const sectionIdx = sameSectionTabs.findIndex((t) => t.id === id);
         const remaining = prev.filter((t) => t.id !== id);
         if (activeTabId === id) {
-          const newIdx = Math.min(idx, remaining.length - 1);
-          setActiveTabId(remaining[newIdx].id);
+          const remainingSection = remaining.filter(
+            (t) => t.tabSource === source,
+          );
+          if (remainingSection.length > 0) {
+            const newIdx = Math.min(sectionIdx, remainingSection.length - 1);
+            setActiveTabId(remainingSection[newIdx].id);
+          } else {
+            // No more tabs in this section
+            const otherTabs = remaining.filter((t) => t.tabSource !== source);
+            if (otherTabs.length > 0) {
+              setActiveTabId(otherTabs[0].id);
+            }
+          }
         }
         return remaining;
       });
@@ -410,41 +508,79 @@ const App: React.FC = () => {
   }, []);
 
   const closeAllTabs = useCallback(() => {
-    const fresh = createEmptyTab();
-    setTabs([fresh]);
-    setActiveTabId(fresh.id);
-  }, []);
+    const source = sidebarSection === "history" ? "history" : "collections";
+    setTabs((prev) => {
+      const otherTabs = prev.filter((t) => t.tabSource !== source);
+      if (source === "collections") {
+        const fresh = createEmptyTab();
+        setActiveTabId(fresh.id);
+        return [...otherTabs, fresh];
+      }
+      // For history, just remove all history tabs
+      const collectionsTabId = lastActiveTabPerSection.current.collections;
+      if (
+        collectionsTabId &&
+        otherTabs.some((t) => t.id === collectionsTabId)
+      ) {
+        setActiveTabId(collectionsTabId);
+      } else if (otherTabs.length > 0) {
+        setActiveTabId(otherTabs[0].id);
+      }
+      return otherTabs;
+    });
+  }, [sidebarSection]);
+
+  // Handle sidebar section switching with tab memory
+  const handleSectionChange = useCallback(
+    (section: SidebarSection) => {
+      // Save current active tab for current section
+      if (sidebarSection !== "flows") {
+        lastActiveTabPerSection.current[sidebarSection] = activeTabId;
+      }
+      // Restore active tab for new section
+      if (section !== "flows") {
+        const source = section === "history" ? "history" : "collections";
+        const sectionTabs = tabs.filter((t) => t.tabSource === source);
+        const lastId = lastActiveTabPerSection.current[section];
+        if (lastId && sectionTabs.some((t) => t.id === lastId)) {
+          setActiveTabId(lastId);
+        } else if (sectionTabs.length > 0) {
+          setActiveTabId(sectionTabs[0].id);
+        }
+        // If no tabs for this section, activeTabId stays as-is (won't render request UI)
+      }
+      setSidebarSection(section);
+    },
+    [sidebarSection, activeTabId, tabs],
+  );
 
   // Sidebar resize handlers
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      isResizingRef.current = true;
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
-      const onMouseMove = (ev: MouseEvent) => {
-        if (!isResizingRef.current) return;
-        const newWidth = Math.min(
-          SIDEBAR_MAX_WIDTH,
-          Math.max(SIDEBAR_MIN_WIDTH, ev.clientX),
-        );
-        setSidebarWidth(newWidth);
-      };
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = Math.min(
+        SIDEBAR_MAX_WIDTH,
+        Math.max(SIDEBAR_MIN_WIDTH, ev.clientX),
+      );
+      setSidebarWidth(newWidth);
+    };
 
-      const onMouseUp = () => {
-        isResizingRef.current = false;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-      };
+    const onMouseUp = () => {
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
 
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-    },
-    [],
-  );
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
 
   // Load collections, environments, history & session on mount
   useEffect(() => {
@@ -471,6 +607,11 @@ const App: React.FC = () => {
           savedToCollectionId: t.savedToCollectionId ?? null,
           savedRequestId: t.savedRequestId ?? null,
           sourceHistoryId: (t as RequestTabType).sourceHistoryId ?? null,
+          tabSource:
+            (t as RequestTabType).tabSource ||
+            (((t as RequestTabType).sourceHistoryId
+              ? "history"
+              : "collections") as "collections" | "history"),
           isDirty: t.isDirty ?? false,
           payloads: (t.payloads || []).map((p) => ({
             ...p,
@@ -514,6 +655,21 @@ const App: React.FC = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [tabContextMenu]);
+
+  // Close flow tab context menu when clicking outside
+  useEffect(() => {
+    if (!flowTabContextMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        flowTabContextMenuRef.current &&
+        !flowTabContextMenuRef.current.contains(e.target as Node)
+      ) {
+        setFlowTabContextMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [flowTabContextMenu]);
 
   // Persist collections when they change
   const handleCollectionsChange = useCallback((updated: Collection[]) => {
@@ -749,7 +905,12 @@ const App: React.FC = () => {
 
   // Load a saved request into a new tab
   const loadRequest = useCallback(
-    (req: SavedRequest, collectionId?: string, requestId?: string, historyId?: string) => {
+    (
+      req: SavedRequest,
+      collectionId?: string,
+      requestId?: string,
+      historyId?: string,
+    ) => {
       // If this request is already open in a tab, just focus it
       if (collectionId && requestId) {
         const existing = tabs.find(
@@ -759,14 +920,20 @@ const App: React.FC = () => {
         );
         if (existing) {
           // Sync name from saved request if it differs
-          if (existing.name !== req.name || (req.activePayloadId && existing.activePayloadId !== req.activePayloadId)) {
+          if (
+            existing.name !== req.name ||
+            (req.activePayloadId &&
+              existing.activePayloadId !== req.activePayloadId)
+          ) {
             setTabs((prev) =>
               prev.map((t) =>
                 t.id === existing.id
                   ? {
                       ...t,
                       name: req.name,
-                      ...(req.activePayloadId ? { activePayloadId: req.activePayloadId } : {}),
+                      ...(req.activePayloadId
+                        ? { activePayloadId: req.activePayloadId }
+                        : {}),
                     }
                   : t,
               ),
@@ -834,6 +1001,7 @@ const App: React.FC = () => {
         savedToCollectionId: collectionId || null,
         savedRequestId: requestId || null,
         sourceHistoryId: historyId || null,
+        tabSource: historyId ? "history" : "collections",
         isDirty: false,
       };
       setTabs((prev) => [...prev, newTab]);
@@ -870,10 +1038,19 @@ const App: React.FC = () => {
 
   // Sync payload rename from sidebar to open tab
   const handleRenamePayload = useCallback(
-    (collectionId: string, requestId: string, payloadId: string, name: string) => {
+    (
+      collectionId: string,
+      requestId: string,
+      payloadId: string,
+      name: string,
+    ) => {
       setTabs((prev) =>
         prev.map((t) => {
-          if (t.savedToCollectionId !== collectionId || t.savedRequestId !== requestId) return t;
+          if (
+            t.savedToCollectionId !== collectionId ||
+            t.savedRequestId !== requestId
+          )
+            return t;
           return {
             ...t,
             payloads: t.payloads.map((p) =>
@@ -913,7 +1090,11 @@ const App: React.FC = () => {
       setTabs((prev) =>
         prev.map((t) =>
           t.id === tab.id
-            ? { ...t, savedToCollectionId: undefined, savedRequestId: undefined }
+            ? {
+                ...t,
+                savedToCollectionId: undefined,
+                savedRequestId: undefined,
+              }
             : t,
         ),
       );
@@ -981,6 +1162,102 @@ const App: React.FC = () => {
   const handleFlowsChange = useCallback((updated: Flow[]) => {
     setFlows(updated);
     window.electronAPI.saveFlows(updated);
+    // Close tabs for deleted flows
+    const updatedIds = new Set(updated.map((f) => f.id));
+    setFlowTabs((prev) => {
+      const filtered = prev.filter((ft) => updatedIds.has(ft.flowId));
+      if (filtered.length !== prev.length) {
+        setActiveFlowTabId((id) =>
+          filtered.some((ft) => ft.id === id) ? id : (filtered[0]?.id ?? null),
+        );
+      }
+      return filtered;
+    });
+  }, []);
+
+  const openFlowTab = useCallback(
+    (flow: Flow, mode: "editor" | "runner" = "editor") => {
+      setFlowTabs((prev) => {
+        const existing = prev.find((ft) => ft.flowId === flow.id);
+        if (existing) {
+          setActiveFlowTabId(existing.id);
+          if (existing.mode !== mode) {
+            return prev.map((ft) =>
+              ft.id === existing.id ? { ...ft, mode } : ft,
+            );
+          }
+          return prev;
+        }
+        const newTab: FlowTab = {
+          id: generateId(),
+          flowId: flow.id,
+          name: flow.name,
+          mode,
+          isDirty: false,
+        };
+        setActiveFlowTabId(newTab.id);
+        return [...prev, newTab];
+      });
+      setSidebarSection("flows");
+    },
+    [],
+  );
+
+  const closeFlowTab = useCallback((tabId: string) => {
+    setFlowTabs((prev) => {
+      const updated = prev.filter((ft) => ft.id !== tabId);
+      if (updated.length === 0) {
+        setActiveFlowTabId(null);
+      } else {
+        setActiveFlowTabId((currentId) => {
+          if (currentId === tabId) {
+            const idx = prev.findIndex((ft) => ft.id === tabId);
+            return updated[Math.min(idx, updated.length - 1)]?.id ?? null;
+          }
+          return currentId;
+        });
+      }
+      return updated;
+    });
+  }, []);
+
+  const duplicateFlowTab = useCallback(
+    (tabId: string) => {
+      const source = flowTabs.find((ft) => ft.id === tabId);
+      if (!source) return;
+      const sourceFlow = flows.find((f) => f.id === source.flowId);
+      if (!sourceFlow) return;
+      const newFlow: Flow = {
+        id: generateId(),
+        name: sourceFlow.name + " (copy)",
+        steps: sourceFlow.steps.map((s) => ({ ...s, id: generateId() })),
+      };
+      setFlows((prevFlows) => {
+        const updated = [...prevFlows, newFlow];
+        window.electronAPI.saveFlows(updated);
+        return updated;
+      });
+      const newTab: FlowTab = {
+        id: generateId(),
+        flowId: newFlow.id,
+        name: newFlow.name,
+        mode: source.mode,
+        isDirty: false,
+      };
+      setFlowTabs((prev) => {
+        const idx = prev.findIndex((ft) => ft.id === tabId);
+        const next = [...prev];
+        next.splice(idx + 1, 0, newTab);
+        return next;
+      });
+      setActiveFlowTabId(newTab.id);
+    },
+    [flowTabs, flows],
+  );
+
+  const closeAllFlowTabs = useCallback(() => {
+    setFlowTabs([]);
+    setActiveFlowTabId(null);
   }, []);
 
   const handleCreateFlow = useCallback(() => {
@@ -994,26 +1271,51 @@ const App: React.FC = () => {
       window.electronAPI.saveFlows(updated);
       return updated;
     });
-    setFlowView({ mode: "editor", flow: newFlow });
+    openFlowTab(newFlow);
+  }, [openFlowTab]);
+
+  const handleSaveFlow = useCallback((flow: Flow) => {
+    setFlows((prev) => {
+      const exists = prev.find((f) => f.id === flow.id);
+      const updated = exists
+        ? prev.map((f) => (f.id === flow.id ? flow : f))
+        : [...prev, flow];
+      window.electronAPI.saveFlows(updated);
+      return updated;
+    });
+    // Update the flow tab name and clear dirty state
+    setFlowTabs((prev) =>
+      prev.map((ft) =>
+        ft.flowId === flow.id ? { ...ft, name: flow.name, isDirty: false } : ft,
+      ),
+    );
   }, []);
 
-  const handleSaveFlow = useCallback(
+  const handleEditFlow = useCallback(
     (flow: Flow) => {
-      setFlows((prev) => {
-        const exists = prev.find((f) => f.id === flow.id);
-        const updated = exists
-          ? prev.map((f) => (f.id === flow.id ? flow : f))
-          : [...prev, flow];
-        window.electronAPI.saveFlows(updated);
-        return updated;
-      });
-      setFlowView({ mode: "editor", flow });
+      openFlowTab(flow);
     },
-    [],
+    [openFlowTab],
   );
 
-  const handleEditFlow = useCallback((flow: Flow) => {
-    setFlowView({ mode: "editor", flow });
+  const handleFlowChange = useCallback((flow: Flow) => {
+    // Mark the flow tab as dirty when edits are made
+    setFlowTabs((prev) =>
+      prev.map((ft) =>
+        ft.flowId === flow.id ? { ...ft, name: flow.name, isDirty: true } : ft,
+      ),
+    );
+  }, []);
+
+  const handleRenameFlow = useCallback((flowId: string, name: string) => {
+    setFlows((prev) => {
+      const updated = prev.map((f) => (f.id === flowId ? { ...f, name } : f));
+      window.electronAPI.saveFlows(updated);
+      return updated;
+    });
+    setFlowTabs((prev) =>
+      prev.map((ft) => (ft.flowId === flowId ? { ...ft, name } : ft)),
+    );
   }, []);
 
   // Helper to find a request by collection + request ID
@@ -1086,8 +1388,8 @@ const App: React.FC = () => {
       const bodyType = req.bodyType || "none";
       const payload =
         req.payloads && req.payloads.length > 0
-          ? (req.payloads.find((p) => p.id === req.activePayloadId) ||
-            req.payloads[0])
+          ? req.payloads.find((p) => p.id === req.activePayloadId) ||
+            req.payloads[0]
           : null;
 
       const resolvedBody = (() => {
@@ -1234,7 +1536,7 @@ const App: React.FC = () => {
   const runFlow = useCallback(
     async (flow: Flow) => {
       flowAbortRef.current = false;
-      setFlowView({ mode: "runner", flow });
+      openFlowTab(flow, "runner");
 
       const runState: FlowRunState = {
         flowId: flow.id,
@@ -1261,7 +1563,10 @@ const App: React.FC = () => {
           // Mark remaining steps as skipped
           for (let j = i; j < flow.steps.length; j++) {
             const skipStep = flow.steps[j];
-            const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+            const skipReq = findRequest(
+              skipStep.collectionId,
+              skipStep.requestId,
+            );
             stepResults.push({
               stepId: skipStep.id,
               stepIndex: j,
@@ -1305,7 +1610,10 @@ const App: React.FC = () => {
             // Skip remaining steps
             for (let j = i + 1; j < flow.steps.length; j++) {
               const skipStep = flow.steps[j];
-              const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+              const skipReq = findRequest(
+                skipStep.collectionId,
+                skipStep.requestId,
+              );
               stepResults.push({
                 stepId: skipStep.id,
                 stepIndex: j,
@@ -1363,7 +1671,10 @@ const App: React.FC = () => {
           // Skip remaining steps
           for (let j = i + 1; j < flow.steps.length; j++) {
             const skipStep = flow.steps[j];
-            const skipReq = findRequest(skipStep.collectionId, skipStep.requestId);
+            const skipReq = findRequest(
+              skipStep.collectionId,
+              skipStep.requestId,
+            );
             stepResults.push({
               stepId: skipStep.id,
               stepIndex: j,
@@ -1398,7 +1709,14 @@ const App: React.FC = () => {
         totalTime: Math.round(completedAt - runState.startedAt),
       });
     },
-    [activeEnv, activeEnvId, environments, executeRequest, findRequest],
+    [
+      activeEnv,
+      activeEnvId,
+      environments,
+      executeRequest,
+      findRequest,
+      openFlowTab,
+    ],
   );
 
   // Ctrl+S / Cmd+S to save
@@ -1585,7 +1903,10 @@ const App: React.FC = () => {
 
   // Auto-send when a variant run was triggered
   useEffect(() => {
-    if (pendingSendRef.current && activeTab.activePayloadId === pendingSendRef.current) {
+    if (
+      pendingSendRef.current &&
+      activeTab.activePayloadId === pendingSendRef.current
+    ) {
       pendingSendRef.current = null;
       sendRequest();
     }
@@ -1598,6 +1919,21 @@ const App: React.FC = () => {
   // Derive tab display name
   const response = activeTab.response;
   const error = activeTab.error;
+
+  const currentTabSource =
+    sidebarSection === "history" ? "history" : "collections";
+  const visibleTabs = tabs.filter((t) => t.tabSource === currentTabSource);
+  const hasVisibleTabs = visibleTabs.length > 0;
+
+  const handleReorderVisibleTabs = useCallback(
+    (reordered: RequestTabType[]) => {
+      setTabs((prev) => {
+        const otherTabs = prev.filter((t) => t.tabSource !== currentTabSource);
+        return [...otherTabs, ...reordered];
+      });
+    },
+    [currentTabSource],
+  );
 
   return (
     <div className="app">
@@ -1617,77 +1953,129 @@ const App: React.FC = () => {
         onEditFlow={handleEditFlow}
         onRunFlow={runFlow}
         onCreateFlow={handleCreateFlow}
+        onRenameFlow={handleRenameFlow}
         onRunVariant={runVariant}
         onRenamePayload={handleRenamePayload}
+        activeSection={sidebarSection}
+        onSectionChange={handleSectionChange}
         style={{ width: sidebarWidth }}
       />
 
       {/* Resize Handle */}
-      <div className="sidebar-resize-handle" onMouseDown={handleResizeMouseDown} />
+      <div
+        className="sidebar-resize-handle"
+        onMouseDown={handleResizeMouseDown}
+      />
 
       {/* Main Panel */}
       <div className="main-panel">
-        {/* Request Tabs Bar */}
+        {/* Tabs Bar */}
         <div className="request-tabs-bar">
-          <div className="request-tabs-scroll">
-            <Reorder.Group
-              as="div"
-              axis="x"
-              values={tabs}
-              onReorder={setTabs}
-              className="request-tabs-list"
-            >
-              {tabs.map((tab) => (
-                <TabItem
-                  key={tab.id}
-                  tab={tab}
-                  isActive={tab.id === activeTabId}
-                  onActivate={() => setActiveTabId(tab.id)}
-                  onClose={() => closeTab(tab.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setTabContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      tabId: tab.id,
-                    });
-                  }}
-                />
-              ))}
-            </Reorder.Group>
-          </div>
-          <button className="request-tab-add" onClick={addTab} title="New Tab">
-            +
-          </button>
+          {sidebarSection !== "flows" && (
+            <>
+              <div className="request-tabs-scroll">
+                <Reorder.Group
+                  as="div"
+                  axis="x"
+                  values={visibleTabs}
+                  onReorder={handleReorderVisibleTabs}
+                  className="request-tabs-list"
+                >
+                  {visibleTabs.map((tab) => (
+                    <TabItem
+                      key={tab.id}
+                      tab={tab}
+                      isActive={tab.id === activeTabId}
+                      onActivate={() => setActiveTabId(tab.id)}
+                      onClose={() => closeTab(tab.id)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setTabContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          tabId: tab.id,
+                        });
+                      }}
+                    />
+                  ))}
+                </Reorder.Group>
+              </div>
+              <button
+                className="request-tab-add"
+                onClick={addTab}
+                title="New Tab"
+              >
+                +
+              </button>
+            </>
+          )}
+          {sidebarSection === "flows" && (
+            <>
+              <div className="request-tabs-scroll">
+                <Reorder.Group
+                  as="div"
+                  axis="x"
+                  values={flowTabs}
+                  onReorder={setFlowTabs}
+                  className="request-tabs-list"
+                >
+                  {flowTabs.map((ft) => (
+                    <FlowTabItem
+                      key={ft.id}
+                      tab={ft}
+                      isActive={ft.id === activeFlowTabId}
+                      onActivate={() => setActiveFlowTabId(ft.id)}
+                      onClose={() => closeFlowTab(ft.id)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setFlowTabContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          tabId: ft.id,
+                        });
+                      }}
+                    />
+                  ))}
+                </Reorder.Group>
+              </div>
+              <button
+                className="request-tab-add"
+                onClick={handleCreateFlow}
+                title="New Flow"
+              >
+                +
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Tab Context Menu */}
-        {tabContextMenu && (
+        {/* Flow Tab Context Menu */}
+        {flowTabContextMenu && (
           <div
-            ref={tabContextMenuRef}
+            ref={flowTabContextMenuRef}
             className="tab-context-menu"
-            style={{ top: tabContextMenu.y, left: tabContextMenu.x }}
+            style={{ top: flowTabContextMenu.y, left: flowTabContextMenu.x }}
           >
             <button
               onClick={() => {
-                duplicateTab(tabContextMenu.tabId);
-                setTabContextMenu(null);
+                duplicateFlowTab(flowTabContextMenu.tabId);
+                setFlowTabContextMenu(null);
               }}
             >
-              Duplicate Request
+              Duplicate Flow
             </button>
             <button
               onClick={() => {
-                closeTab(tabContextMenu.tabId);
-                setTabContextMenu(null);
+                closeFlowTab(flowTabContextMenu.tabId);
+                setFlowTabContextMenu(null);
               }}
             >
               Close Tab
             </button>
             <button
               onClick={() => {
-                closeAllTabs();
-                setTabContextMenu(null);
+                closeAllFlowTabs();
+                setFlowTabContextMenu(null);
               }}
             >
               Close All Tabs
@@ -1695,382 +2083,446 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Environment Bar */}
-        <div className="env-bar">
-          <input
-            className="request-name-input"
-            type="text"
-            value={activeTab.name === "Untitled" ? "" : activeTab.name}
-            placeholder="Request name..."
-            onChange={(e) => renameActiveRequest(e.target.value || "Untitled")}
-          />
-          <div className="env-bar-separator" />
-          <select
-            className="env-select"
-            value={activeEnvId || ""}
-            onChange={(e) => setActiveEnvId(e.target.value || null)}
-          >
-            <option value="">No Environment</option>
-            {environments.map((env) => (
-              <option key={env.id} value={env.id}>
-                {env.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className="env-manage-btn"
-            onClick={() => setShowEnvManager(true)}
-          >
-            Manage
-          </button>
-        </div>
-
-        {/* URL Bar */}
-        <div className="url-bar">
-          <select
-            className="method-select"
-            value={activeTab.method}
-            onChange={(e) =>
-              updateTab(activeTab.id, { method: e.target.value })
-            }
-            style={{ color: METHOD_COLORS[activeTab.method as HttpMethod] }}
-          >
-            {(["GET", "POST", "PUT", "PATCH", "DELETE"] as HttpMethod[]).map(
-              (m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ),
-            )}
-          </select>
-          <AutoSuggestInput
-            className="url-input"
-            type="text"
-            placeholder="Enter request URL..."
-            value={activeTab.url}
-            onValueChange={(v) => {
-              const parsed = parseQueryParams(v);
-              const params =
-                parsed.length > 0
-                  ? [...parsed, { enabled: true, key: "", value: "" }]
-                  : [{ enabled: true, key: "", value: "" }];
-              updateTab(activeTab.id, { url: v, params });
-            }}
-            variables={activeEnv?.variables ?? []}
-            envName={activeEnv?.name}
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            className="send-btn"
-            onClick={sendRequest}
-            disabled={loading || !activeTab.url.trim()}
-          >
-            {loading ? "Sending..." : "Send"}
-          </button>
-          <button
-            className={`save-btn${activeTab.isDirty ? " dirty" : ""}`}
-            onClick={saveRequestToCollection}
-            disabled={activeTab.savedRequestId ? !activeTab.isDirty : false}
-            title={
-              !activeTab.savedRequestId
-                ? "Save to collection (Ctrl+S)"
-                : activeTab.isDirty
-                  ? "Save changes to collection (Ctrl+S)"
-                  : "No unsaved changes"
-            }
-          >
-            {activeTab.savedRequestId ? "Save" : "Save"}
-          </button>
-        </div>
-
-        <div className="request-response">
-          {/* Request Section */}
-          <div className="request-section">
-            <div className="tabs">
-              {(
-                [
-                  "params",
-                  "headers",
-                  "body",
-                  "auth",
-                  "captures",
-                ] as RequestPanel[]
-              ).map((tab) => (
+        {sidebarSection !== "flows" && hasVisibleTabs && (
+          <>
+            {/* Tab Context Menu */}
+            {tabContextMenu && (
+              <div
+                ref={tabContextMenuRef}
+                className="tab-context-menu"
+                style={{ top: tabContextMenu.y, left: tabContextMenu.x }}
+              >
                 <button
-                  key={tab}
-                  className={`tab ${requestPanel === tab ? "active" : ""}`}
-                  onClick={() => setRequestPanel(tab)}
+                  onClick={() => {
+                    duplicateTab(tabContextMenu.tabId);
+                    setTabContextMenu(null);
+                  }}
                 >
-                  {tab}
-                  {tab === "auth" && activeTab.auth.type !== "none" && (
-                    <span className="tab-badge">●</span>
-                  )}
-                  {tab === "captures" && activeTab.captures.length > 0 && (
-                    <span className="tab-badge">
-                      {activeTab.captures.filter((c) => c.enabled).length}
-                    </span>
-                  )}
+                  Duplicate Request
                 </button>
-              ))}
+                <button
+                  onClick={() => {
+                    closeTab(tabContextMenu.tabId);
+                    setTabContextMenu(null);
+                  }}
+                >
+                  Close Tab
+                </button>
+                <button
+                  onClick={() => {
+                    closeAllTabs();
+                    setTabContextMenu(null);
+                  }}
+                >
+                  Close All Tabs
+                </button>
+              </div>
+            )}
+
+            {/* Environment Bar */}
+            <div className="env-bar">
+              <input
+                className="request-name-input"
+                type="text"
+                value={activeTab.name === "Untitled" ? "" : activeTab.name}
+                placeholder="Request name..."
+                onChange={(e) =>
+                  renameActiveRequest(e.target.value || "Untitled")
+                }
+              />
+              <div className="env-bar-separator" />
+              <select
+                className="env-select"
+                value={activeEnvId || ""}
+                onChange={(e) => setActiveEnvId(e.target.value || null)}
+              >
+                <option value="">No Environment</option>
+                {environments.map((env) => (
+                  <option key={env.id} value={env.id}>
+                    {env.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="env-manage-btn"
+                onClick={() => setShowEnvManager(true)}
+              >
+                Manage
+              </button>
             </div>
 
-            {requestPanel === "params" && (
-              <KeyValueEditor
-                pairs={activeTab.params}
-                onChange={(p) => {
-                  const base = getBaseUrl(activeTab.url);
-                  const qs = buildQueryString(p);
-                  const url = qs ? `${base}?${qs}` : base;
-                  updateTab(activeTab.id, { params: p, url });
+            {/* URL Bar */}
+            <div className="url-bar">
+              <select
+                className="method-select"
+                value={activeTab.method}
+                onChange={(e) =>
+                  updateTab(activeTab.id, { method: e.target.value })
+                }
+                style={{ color: METHOD_COLORS[activeTab.method as HttpMethod] }}
+              >
+                {(
+                  ["GET", "POST", "PUT", "PATCH", "DELETE"] as HttpMethod[]
+                ).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <AutoSuggestInput
+                className="url-input"
+                type="text"
+                placeholder="Enter request URL..."
+                value={activeTab.url}
+                onValueChange={(v) => {
+                  const parsed = parseQueryParams(v);
+                  const params =
+                    parsed.length > 0
+                      ? [...parsed, { enabled: true, key: "", value: "" }]
+                      : [{ enabled: true, key: "", value: "" }];
+                  updateTab(activeTab.id, { url: v, params });
                 }}
                 variables={activeEnv?.variables ?? []}
                 envName={activeEnv?.name}
+                onKeyDown={handleKeyDown}
               />
-            )}
-            {requestPanel === "headers" && (
-              <>
-                <KeyValueEditor
-                  pairs={activeTab.headers}
-                  onChange={(h) => updateTab(activeTab.id, { headers: h })}
-                  variables={activeEnv?.variables ?? []}
-                  envName={activeEnv?.name}
-                  headerMode
-                />
-                <div className="autogenerated-headers">
-                  <div className="autogenerated-headers-title">
-                    Auto-generated headers
-                    <span className="autogenerated-headers-hint">
-                      (override by adding a header with the same key)
-                    </span>
-                  </div>
-                  <div className="autogenerated-header-row">
-                    <span className="header-key">User-Agent</span>
-                    <span className="header-value">ReqResFlow/1.0</span>
-                  </div>
-                  <div className="autogenerated-header-row">
-                    <span className="header-key">Accept</span>
-                    <span className="header-value">*/*</span>
-                  </div>
-                  <div className="autogenerated-header-row">
-                    <span className="header-key">Accept-Encoding</span>
-                    <span className="header-value">gzip, deflate, br</span>
-                  </div>
-                  <div className="autogenerated-header-row">
-                    <span className="header-key">Connection</span>
-                    <span className="header-value">keep-alive</span>
-                  </div>
-                </div>
-              </>
-            )}
-            {requestPanel === "body" && (
-              <div className="body-editor">
-                <div className="body-type-bar">
+              <button
+                className="send-btn"
+                onClick={sendRequest}
+                disabled={loading || !activeTab.url.trim()}
+              >
+                {loading ? "Sending..." : "Send"}
+              </button>
+              <button
+                className={`save-btn${activeTab.isDirty ? " dirty" : ""}`}
+                onClick={saveRequestToCollection}
+                disabled={activeTab.savedRequestId ? !activeTab.isDirty : false}
+                title={
+                  !activeTab.savedRequestId
+                    ? "Save to collection (Ctrl+S)"
+                    : activeTab.isDirty
+                      ? "Save changes to collection (Ctrl+S)"
+                      : "No unsaved changes"
+                }
+              >
+                {activeTab.savedRequestId ? "Save" : "Save"}
+              </button>
+            </div>
+
+            <div className="request-response">
+              {/* Request Section */}
+              <div className="request-section">
+                <div className="tabs">
                   {(
                     [
-                      "none",
-                      "form-data",
-                      "x-www-form-urlencoded",
-                      "raw",
-                      "binary",
-                      "graphql",
-                    ] as BodyType[]
-                  ).map((bt) => (
-                    <label key={bt} className="body-type-option">
-                      <input
-                        type="radio"
-                        name="bodyType"
-                        checked={activeTab.bodyType === bt}
-                        onChange={() => {
-                          updateTab(activeTab.id, { bodyType: bt });
-                          if (activePayload) {
-                            updateTab(activeTab.id, {
-                              bodyType: bt,
-                              payloads: activeTab.payloads.map((p) =>
-                                p.id === activeTab.activePayloadId
-                                  ? { ...p, bodyType: bt }
-                                  : p,
-                              ),
-                            });
-                          }
-                        }}
-                      />
-                      <span>{bt}</span>
-                    </label>
-                  ))}
-                  {activeTab.bodyType === "raw" && (
-                    <select
-                      className="raw-language-select"
-                      value={activeTab.rawLanguage}
-                      onChange={(e) => {
-                        const lang = e.target.value as RawLanguage;
-                        updateTab(activeTab.id, {
-                          rawLanguage: lang,
-                          payloads: activeTab.payloads.map((p) =>
-                            p.id === activeTab.activePayloadId
-                              ? { ...p, rawLanguage: lang }
-                              : p,
-                          ),
-                        });
-                      }}
-                    >
-                      <option value="json">JSON</option>
-                      <option value="text">Text</option>
-                      <option value="xml">XML</option>
-                      <option value="html">HTML</option>
-                      <option value="javascript">JavaScript</option>
-                    </select>
-                  )}
-                </div>
-                <div className="payload-bar">
-                  <div className="payload-tabs">
-                    {activeTab.payloads.map((p) => (
-                      <div
-                        key={p.id}
-                        className={`payload-tab ${p.id === activeTab.activePayloadId ? "active" : ""}`}
-                        onClick={() =>
-                          updateTab(activeTab.id, { activePayloadId: p.id })
-                        }
-                      >
-                        <span className="payload-tab-name">{p.name}</span>
-                        {activeTab.payloads.length > 1 && (
-                          <button
-                            className="payload-tab-close"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removePayload(p.id);
-                            }}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      "params",
+                      "headers",
+                      "body",
+                      "auth",
+                      "captures",
+                    ] as RequestPanel[]
+                  ).map((tab) => (
                     <button
-                      className="payload-add-btn"
-                      onClick={addPayload}
-                      title="Add payload variant"
+                      key={tab}
+                      className={`tab ${requestPanel === tab ? "active" : ""}`}
+                      onClick={() => setRequestPanel(tab)}
                     >
-                      +
+                      {tab}
+                      {tab === "auth" && activeTab.auth.type !== "none" && (
+                        <span className="tab-badge">●</span>
+                      )}
+                      {tab === "captures" && activeTab.captures.length > 0 && (
+                        <span className="tab-badge">
+                          {activeTab.captures.filter((c) => c.enabled).length}
+                        </span>
+                      )}
                     </button>
-                  </div>
-                  {activePayload && (
-                    <input
-                      className="payload-rename-input"
-                      value={activePayload.name}
-                      onChange={(e) =>
-                        renamePayload(activePayload.id, e.target.value)
-                      }
-                      title="Rename payload"
-                    />
-                  )}
+                  ))}
                 </div>
-                {activeTab.bodyType === "none" && (
-                  <div className="body-none-info">
-                    This request does not have a body.
-                  </div>
-                )}
-                {activeTab.bodyType === "raw" && (
-                  <CodeEditor
-                    value={body}
-                    onChange={updatePayloadBody}
-                    language={activeTab.rawLanguage}
-                    placeholder={
-                      activeTab.rawLanguage === "json"
-                        ? '{"key": "value"}'
-                        : "Enter request body..."
-                    }
-                    showFormatButton
+
+                {requestPanel === "params" && (
+                  <KeyValueEditor
+                    pairs={activeTab.params}
+                    onChange={(p) => {
+                      const base = getBaseUrl(activeTab.url);
+                      const qs = buildQueryString(p);
+                      const url = qs ? `${base}?${qs}` : base;
+                      updateTab(activeTab.id, { params: p, url });
+                    }}
+                    variables={activeEnv?.variables ?? []}
+                    envName={activeEnv?.name}
                   />
                 )}
-                {(activeTab.bodyType === "form-data" ||
-                  activeTab.bodyType === "x-www-form-urlencoded") &&
-                  activePayload && (
-                    <div className="form-data-editor">
-                      {activePayload.formData.map((field, i) => (
-                        <div className="form-data-row" key={i}>
+                {requestPanel === "headers" && (
+                  <>
+                    <KeyValueEditor
+                      pairs={activeTab.headers}
+                      onChange={(h) => updateTab(activeTab.id, { headers: h })}
+                      variables={activeEnv?.variables ?? []}
+                      envName={activeEnv?.name}
+                      headerMode
+                    />
+                    <div className="autogenerated-headers">
+                      <div className="autogenerated-headers-title">
+                        Auto-generated headers
+                        <span className="autogenerated-headers-hint">
+                          (override by adding a header with the same key)
+                        </span>
+                      </div>
+                      <div className="autogenerated-header-row">
+                        <span className="header-key">User-Agent</span>
+                        <span className="header-value">ReqResFlow/1.0</span>
+                      </div>
+                      <div className="autogenerated-header-row">
+                        <span className="header-key">Accept</span>
+                        <span className="header-value">*/*</span>
+                      </div>
+                      <div className="autogenerated-header-row">
+                        <span className="header-key">Accept-Encoding</span>
+                        <span className="header-value">gzip, deflate, br</span>
+                      </div>
+                      <div className="autogenerated-header-row">
+                        <span className="header-key">Connection</span>
+                        <span className="header-value">keep-alive</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {requestPanel === "body" && (
+                  <div className="body-editor">
+                    <div className="body-type-bar">
+                      {(
+                        [
+                          "none",
+                          "form-data",
+                          "x-www-form-urlencoded",
+                          "raw",
+                          "binary",
+                          "graphql",
+                        ] as BodyType[]
+                      ).map((bt) => (
+                        <label key={bt} className="body-type-option">
                           <input
-                            type="checkbox"
-                            checked={field.enabled}
-                            onChange={(e) => {
-                              const updated = [...activePayload.formData];
-                              updated[i] = {
-                                ...updated[i],
-                                enabled: e.target.checked,
-                              };
-                              updateTab(activeTab.id, {
-                                payloads: activeTab.payloads.map((p) =>
-                                  p.id === activeTab.activePayloadId
-                                    ? { ...p, formData: updated }
-                                    : p,
-                                ),
-                              });
-                            }}
-                          />
-                          <AutoSuggestInput
-                            type="text"
-                            placeholder="Key"
-                            value={field.key}
-                            onValueChange={(v) => {
-                              const updated = [...activePayload.formData];
-                              updated[i] = { ...updated[i], key: v };
-                              updateTab(activeTab.id, {
-                                payloads: activeTab.payloads.map((p) =>
-                                  p.id === activeTab.activePayloadId
-                                    ? { ...p, formData: updated }
-                                    : p,
-                                ),
-                              });
-                            }}
-                            variables={activeEnv?.variables ?? []}
-                            envName={activeEnv?.name}
-                          />
-                          <AutoSuggestInput
-                            type="text"
-                            placeholder="Value"
-                            value={field.value}
-                            onValueChange={(v) => {
-                              const updated = [...activePayload.formData];
-                              updated[i] = { ...updated[i], value: v };
-                              updateTab(activeTab.id, {
-                                payloads: activeTab.payloads.map((p) =>
-                                  p.id === activeTab.activePayloadId
-                                    ? { ...p, formData: updated }
-                                    : p,
-                                ),
-                              });
-                            }}
-                            variables={activeEnv?.variables ?? []}
-                            envName={activeEnv?.name}
-                          />
-                          {activeTab.bodyType === "form-data" && (
-                            <select
-                              className="form-data-type-select"
-                              value={field.type}
-                              onChange={(e) => {
-                                const updated = [...activePayload.formData];
-                                updated[i] = {
-                                  ...updated[i],
-                                  type: e.target.value as "text" | "file",
-                                };
+                            type="radio"
+                            name="bodyType"
+                            checked={activeTab.bodyType === bt}
+                            onChange={() => {
+                              updateTab(activeTab.id, { bodyType: bt });
+                              if (activePayload) {
                                 updateTab(activeTab.id, {
+                                  bodyType: bt,
                                   payloads: activeTab.payloads.map((p) =>
                                     p.id === activeTab.activePayloadId
-                                      ? { ...p, formData: updated }
+                                      ? { ...p, bodyType: bt }
                                       : p,
                                   ),
                                 });
-                              }}
-                            >
-                              <option value="text">Text</option>
-                              <option value="file">File</option>
-                            </select>
-                          )}
+                              }
+                            }}
+                          />
+                          <span>{bt}</span>
+                        </label>
+                      ))}
+                      {activeTab.bodyType === "raw" && (
+                        <select
+                          className="raw-language-select"
+                          value={activeTab.rawLanguage}
+                          onChange={(e) => {
+                            const lang = e.target.value as RawLanguage;
+                            updateTab(activeTab.id, {
+                              rawLanguage: lang,
+                              payloads: activeTab.payloads.map((p) =>
+                                p.id === activeTab.activePayloadId
+                                  ? { ...p, rawLanguage: lang }
+                                  : p,
+                              ),
+                            });
+                          }}
+                        >
+                          <option value="json">JSON</option>
+                          <option value="text">Text</option>
+                          <option value="xml">XML</option>
+                          <option value="html">HTML</option>
+                          <option value="javascript">JavaScript</option>
+                        </select>
+                      )}
+                    </div>
+                    <div className="payload-bar">
+                      <div className="payload-tabs">
+                        {activeTab.payloads.map((p) => (
+                          <div
+                            key={p.id}
+                            className={`payload-tab ${p.id === activeTab.activePayloadId ? "active" : ""}`}
+                            onClick={() =>
+                              updateTab(activeTab.id, { activePayloadId: p.id })
+                            }
+                          >
+                            <span className="payload-tab-name">{p.name}</span>
+                            {activeTab.payloads.length > 1 && (
+                              <button
+                                className="payload-tab-close"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removePayload(p.id);
+                                }}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          className="payload-add-btn"
+                          onClick={addPayload}
+                          title="Add payload variant"
+                        >
+                          +
+                        </button>
+                      </div>
+                      {activePayload && (
+                        <input
+                          className="payload-rename-input"
+                          value={activePayload.name}
+                          onChange={(e) =>
+                            renamePayload(activePayload.id, e.target.value)
+                          }
+                          title="Rename payload"
+                        />
+                      )}
+                    </div>
+                    {activeTab.bodyType === "none" && (
+                      <div className="body-none-info">
+                        This request does not have a body.
+                      </div>
+                    )}
+                    {activeTab.bodyType === "raw" && (
+                      <CodeEditor
+                        value={body}
+                        onChange={updatePayloadBody}
+                        language={activeTab.rawLanguage}
+                        placeholder={
+                          activeTab.rawLanguage === "json"
+                            ? '{"key": "value"}'
+                            : "Enter request body..."
+                        }
+                        showFormatButton
+                      />
+                    )}
+                    {(activeTab.bodyType === "form-data" ||
+                      activeTab.bodyType === "x-www-form-urlencoded") &&
+                      activePayload && (
+                        <div className="form-data-editor">
+                          {activePayload.formData.map((field, i) => (
+                            <div className="form-data-row" key={i}>
+                              <input
+                                type="checkbox"
+                                checked={field.enabled}
+                                onChange={(e) => {
+                                  const updated = [...activePayload.formData];
+                                  updated[i] = {
+                                    ...updated[i],
+                                    enabled: e.target.checked,
+                                  };
+                                  updateTab(activeTab.id, {
+                                    payloads: activeTab.payloads.map((p) =>
+                                      p.id === activeTab.activePayloadId
+                                        ? { ...p, formData: updated }
+                                        : p,
+                                    ),
+                                  });
+                                }}
+                              />
+                              <AutoSuggestInput
+                                type="text"
+                                placeholder="Key"
+                                value={field.key}
+                                onValueChange={(v) => {
+                                  const updated = [...activePayload.formData];
+                                  updated[i] = { ...updated[i], key: v };
+                                  updateTab(activeTab.id, {
+                                    payloads: activeTab.payloads.map((p) =>
+                                      p.id === activeTab.activePayloadId
+                                        ? { ...p, formData: updated }
+                                        : p,
+                                    ),
+                                  });
+                                }}
+                                variables={activeEnv?.variables ?? []}
+                                envName={activeEnv?.name}
+                              />
+                              <AutoSuggestInput
+                                type="text"
+                                placeholder="Value"
+                                value={field.value}
+                                onValueChange={(v) => {
+                                  const updated = [...activePayload.formData];
+                                  updated[i] = { ...updated[i], value: v };
+                                  updateTab(activeTab.id, {
+                                    payloads: activeTab.payloads.map((p) =>
+                                      p.id === activeTab.activePayloadId
+                                        ? { ...p, formData: updated }
+                                        : p,
+                                    ),
+                                  });
+                                }}
+                                variables={activeEnv?.variables ?? []}
+                                envName={activeEnv?.name}
+                              />
+                              {activeTab.bodyType === "form-data" && (
+                                <select
+                                  className="form-data-type-select"
+                                  value={field.type}
+                                  onChange={(e) => {
+                                    const updated = [...activePayload.formData];
+                                    updated[i] = {
+                                      ...updated[i],
+                                      type: e.target.value as "text" | "file",
+                                    };
+                                    updateTab(activeTab.id, {
+                                      payloads: activeTab.payloads.map((p) =>
+                                        p.id === activeTab.activePayloadId
+                                          ? { ...p, formData: updated }
+                                          : p,
+                                      ),
+                                    });
+                                  }}
+                                >
+                                  <option value="text">Text</option>
+                                  <option value="file">File</option>
+                                </select>
+                              )}
+                              <button
+                                className="kv-remove-btn"
+                                onClick={() => {
+                                  const updated = activePayload.formData.filter(
+                                    (_, j) => j !== i,
+                                  );
+                                  updateTab(activeTab.id, {
+                                    payloads: activeTab.payloads.map((p) =>
+                                      p.id === activeTab.activePayloadId
+                                        ? { ...p, formData: updated }
+                                        : p,
+                                    ),
+                                  });
+                                }}
+                                title="Remove"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
                           <button
-                            className="kv-remove-btn"
+                            className="kv-add-btn"
                             onClick={() => {
-                              const updated = activePayload.formData.filter(
-                                (_, j) => j !== i,
-                              );
+                              const updated = [
+                                ...activePayload.formData,
+                                {
+                                  enabled: true,
+                                  key: "",
+                                  value: "",
+                                  type: "text" as const,
+                                },
+                              ];
                               updateTab(activeTab.id, {
                                 payloads: activeTab.payloads.map((p) =>
                                   p.id === activeTab.activePayloadId
@@ -2079,367 +2531,420 @@ const App: React.FC = () => {
                                 ),
                               });
                             }}
-                            title="Remove"
                           >
-                            ×
+                            + Add
                           </button>
                         </div>
-                      ))}
-                      <button
-                        className="kv-add-btn"
-                        onClick={() => {
-                          const updated = [
-                            ...activePayload.formData,
-                            {
-                              enabled: true,
-                              key: "",
-                              value: "",
-                              type: "text" as const,
-                            },
-                          ];
-                          updateTab(activeTab.id, {
-                            payloads: activeTab.payloads.map((p) =>
-                              p.id === activeTab.activePayloadId
-                                ? { ...p, formData: updated }
-                                : p,
-                            ),
-                          });
+                      )}
+                    {activeTab.bodyType === "binary" && activePayload && (
+                      <div className="binary-editor">
+                        <div className="binary-info">
+                          Select a file to send as the request body.
+                        </div>
+                        <input
+                          type="text"
+                          className="binary-path-input"
+                          placeholder="File path (e.g. C:\files\image.png)"
+                          value={activePayload.binaryFilePath}
+                          onChange={(e) =>
+                            updateTab(activeTab.id, {
+                              payloads: activeTab.payloads.map((p) =>
+                                p.id === activeTab.activePayloadId
+                                  ? { ...p, binaryFilePath: e.target.value }
+                                  : p,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    )}
+                    {activeTab.bodyType === "graphql" && activePayload && (
+                      <div className="graphql-editor">
+                        <div className="graphql-section">
+                          <label className="graphql-label">Query</label>
+                          <CodeEditor
+                            value={activePayload.graphql.query}
+                            onChange={(val) =>
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? {
+                                        ...p,
+                                        graphql: {
+                                          ...p.graphql,
+                                          query: val,
+                                        },
+                                      }
+                                    : p,
+                                ),
+                              })
+                            }
+                            language="javascript"
+                            placeholder={
+                              "query {\n  users {\n    id\n    name\n  }\n}"
+                            }
+                            className="graphql-query"
+                          />
+                        </div>
+                        <div className="graphql-section">
+                          <label className="graphql-label">
+                            Variables (JSON)
+                          </label>
+                          <CodeEditor
+                            value={activePayload.graphql.variables}
+                            onChange={(val) =>
+                              updateTab(activeTab.id, {
+                                payloads: activeTab.payloads.map((p) =>
+                                  p.id === activeTab.activePayloadId
+                                    ? {
+                                        ...p,
+                                        graphql: {
+                                          ...p.graphql,
+                                          variables: val,
+                                        },
+                                      }
+                                    : p,
+                                ),
+                              })
+                            }
+                            language="json"
+                            placeholder='{"id": 1}'
+                            className="graphql-variables"
+                            showFormatButton
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {requestPanel === "auth" && (
+                  <div className="auth-editor">
+                    <div className="auth-type-row">
+                      <label className="auth-label">Type</label>
+                      <select
+                        className="auth-type-select"
+                        value={activeTab.auth.type}
+                        onChange={(e) => {
+                          const type = e.target.value as AuthConfig["type"];
+                          if (type === "none") {
+                            updateTab(activeTab.id, { auth: { type: "none" } });
+                          } else if (type === "bearer") {
+                            updateTab(activeTab.id, {
+                              auth: { type: "bearer", token: "" },
+                            });
+                          } else if (type === "basic") {
+                            updateTab(activeTab.id, {
+                              auth: {
+                                type: "basic",
+                                username: "",
+                                password: "",
+                              },
+                            });
+                          }
                         }}
                       >
-                        + Add
-                      </button>
+                        <option value="none">No Auth</option>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="basic">Basic Auth</option>
+                      </select>
                     </div>
-                  )}
-                {activeTab.bodyType === "binary" && activePayload && (
-                  <div className="binary-editor">
-                    <div className="binary-info">
-                      Select a file to send as the request body.
-                    </div>
-                    <input
-                      type="text"
-                      className="binary-path-input"
-                      placeholder="File path (e.g. C:\files\image.png)"
-                      value={activePayload.binaryFilePath}
-                      onChange={(e) =>
-                        updateTab(activeTab.id, {
-                          payloads: activeTab.payloads.map((p) =>
-                            p.id === activeTab.activePayloadId
-                              ? { ...p, binaryFilePath: e.target.value }
-                              : p,
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                )}
-                {activeTab.bodyType === "graphql" && activePayload && (
-                  <div className="graphql-editor">
-                    <div className="graphql-section">
-                      <label className="graphql-label">Query</label>
-                      <CodeEditor
-                        value={activePayload.graphql.query}
-                        onChange={(val) =>
-                          updateTab(activeTab.id, {
-                            payloads: activeTab.payloads.map((p) =>
-                              p.id === activeTab.activePayloadId
-                                ? {
-                                    ...p,
-                                    graphql: {
-                                      ...p.graphql,
-                                      query: val,
-                                    },
-                                  }
-                                : p,
-                            ),
-                          })
-                        }
-                        language="javascript"
-                        placeholder={
-                          "query {\n  users {\n    id\n    name\n  }\n}"
-                        }
-                        className="graphql-query"
-                      />
-                    </div>
-                    <div className="graphql-section">
-                      <label className="graphql-label">Variables (JSON)</label>
-                      <CodeEditor
-                        value={activePayload.graphql.variables}
-                        onChange={(val) =>
-                          updateTab(activeTab.id, {
-                            payloads: activeTab.payloads.map((p) =>
-                              p.id === activeTab.activePayloadId
-                                ? {
-                                    ...p,
-                                    graphql: {
-                                      ...p.graphql,
-                                      variables: val,
-                                    },
-                                  }
-                                : p,
-                            ),
-                          })
-                        }
-                        language="json"
-                        placeholder='{"id": 1}'
-                        className="graphql-variables"
-                        showFormatButton
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {requestPanel === "auth" && (
-              <div className="auth-editor">
-                <div className="auth-type-row">
-                  <label className="auth-label">Type</label>
-                  <select
-                    className="auth-type-select"
-                    value={activeTab.auth.type}
-                    onChange={(e) => {
-                      const type = e.target.value as AuthConfig["type"];
-                      if (type === "none") {
-                        updateTab(activeTab.id, { auth: { type: "none" } });
-                      } else if (type === "bearer") {
-                        updateTab(activeTab.id, {
-                          auth: { type: "bearer", token: "" },
-                        });
-                      } else if (type === "basic") {
-                        updateTab(activeTab.id, {
-                          auth: { type: "basic", username: "", password: "" },
-                        });
-                      }
-                    }}
-                  >
-                    <option value="none">No Auth</option>
-                    <option value="bearer">Bearer Token</option>
-                    <option value="basic">Basic Auth</option>
-                  </select>
-                </div>
-                {activeTab.auth.type === "bearer" && (
-                  <div className="auth-fields">
-                    <div className="auth-field">
-                      <label className="auth-label">Token</label>
-                      <AutoSuggestInput
-                        className="auth-input"
-                        type="text"
-                        placeholder="{{token}} or paste token"
-                        value={activeTab.auth.token}
-                        onValueChange={(v) =>
-                          updateTab(activeTab.id, {
-                            auth: { type: "bearer", token: v },
-                          })
-                        }
-                        variables={activeEnv?.variables ?? []}
-                        envName={activeEnv?.name}
-                      />
-                    </div>
-                    <div className="auth-info">
-                      Will send as: Authorization: Bearer &lt;token&gt;
-                    </div>
-                  </div>
-                )}
-                {activeTab.auth.type === "basic" && (
-                  <div className="auth-fields">
-                    <div className="auth-field">
-                      <label className="auth-label">Username</label>
-                      <AutoSuggestInput
-                        className="auth-input"
-                        type="text"
-                        placeholder="{{username}} or enter username"
-                        value={activeTab.auth.username}
-                        onValueChange={(v) =>
-                          updateTab(activeTab.id, {
-                            auth: {
-                              type: "basic",
-                              username: v,
-                              password:
-                                activeTab.auth.type === "basic"
-                                  ? activeTab.auth.password
-                                  : "",
-                            },
-                          })
-                        }
-                        variables={activeEnv?.variables ?? []}
-                        envName={activeEnv?.name}
-                      />
-                    </div>
-                    <div className="auth-field">
-                      <label className="auth-label">Password</label>
-                      <AutoSuggestInput
-                        className="auth-input"
-                        type="text"
-                        placeholder="{{password}} or enter password"
-                        value={activeTab.auth.password}
-                        onValueChange={(v) =>
-                          updateTab(activeTab.id, {
-                            auth: {
-                              type: "basic",
-                              username:
-                                activeTab.auth.type === "basic"
-                                  ? activeTab.auth.username
-                                  : "",
-                              password: v,
-                            },
-                          })
-                        }
-                        variables={activeEnv?.variables ?? []}
-                        envName={activeEnv?.name}
-                      />
-                    </div>
-                    <div className="auth-info">
-                      Will send as: Authorization: Basic
-                      base64(username:password)
-                    </div>
-                  </div>
-                )}
-                {activeTab.auth.type === "none" && (
-                  <div className="auth-info" style={{ marginTop: 12 }}>
-                    No authentication will be applied to this request.
-                  </div>
-                )}
-              </div>
-            )}
-            {requestPanel === "captures" && (
-              <div className="captures-editor">
-                <div className="captures-info">
-                  Extract values from responses and save them as environment
-                  variables.
-                  {!activeEnvId && (
-                    <span className="captures-warning">
-                      {" "}
-                      Select an environment first.
-                    </span>
-                  )}
-                </div>
-                {activeTab.captures.length === 0 && (
-                  <div className="captures-empty">
-                    No captures yet. Add one to extract response values into env
-                    variables.
-                  </div>
-                )}
-                {activeTab.captures.map((cap) => (
-                  <div className="capture-row" key={cap.id}>
-                    <input
-                      type="checkbox"
-                      checked={cap.enabled}
-                      onChange={(e) =>
-                        updateCapture(cap.id, { enabled: e.target.checked })
-                      }
-                    />
-                    <input
-                      className="capture-var-input"
-                      type="text"
-                      placeholder="Variable name"
-                      value={cap.varName}
-                      onChange={(e) =>
-                        updateCapture(cap.id, { varName: e.target.value })
-                      }
-                    />
-                    <span className="capture-eq">=</span>
-                    <select
-                      className="capture-source-select"
-                      value={cap.source}
-                      onChange={(e) =>
-                        updateCapture(cap.id, {
-                          source: e.target.value as ResponseCapture["source"],
-                        })
-                      }
-                    >
-                      <option value="body">Body (JSON path)</option>
-                      <option value="header">Header</option>
-                      <option value="status">Status code</option>
-                    </select>
-                    {cap.source !== "status" && (
-                      <input
-                        className="capture-path-input"
-                        type="text"
-                        placeholder={
-                          cap.source === "body" ? "data.token" : "x-request-id"
-                        }
-                        value={cap.path}
-                        onChange={(e) =>
-                          updateCapture(cap.id, { path: e.target.value })
-                        }
-                      />
+                    {activeTab.auth.type === "bearer" && (
+                      <div className="auth-fields">
+                        <div className="auth-field">
+                          <label className="auth-label">Token</label>
+                          <AutoSuggestInput
+                            className="auth-input"
+                            type="text"
+                            placeholder="{{token}} or paste token"
+                            value={activeTab.auth.token}
+                            onValueChange={(v) =>
+                              updateTab(activeTab.id, {
+                                auth: { type: "bearer", token: v },
+                              })
+                            }
+                            variables={activeEnv?.variables ?? []}
+                            envName={activeEnv?.name}
+                          />
+                        </div>
+                        <div className="auth-info">
+                          Will send as: Authorization: Bearer &lt;token&gt;
+                        </div>
+                      </div>
                     )}
-                    <button
-                      className="capture-remove-btn"
-                      onClick={() => removeCapture(cap.id)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <button className="capture-add-btn" onClick={addCapture}>
-                  + Add Capture
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Response Section */}
-          <div className="response-section">
-            <div className="tabs">
-              {(["body", "headers"] as ResponsePanel[]).map((tab) => (
-                <button
-                  key={tab}
-                  className={`tab ${responsePanel === tab ? "active" : ""}`}
-                  onClick={() => setResponsePanel(tab)}
-                >
-                  {tab === "body" ? "Response Body" : "Response Headers"}
-                </button>
-              ))}
-            </div>
-
-            {error && <div className="response-error">{error}</div>}
-
-            {!response && !error && (
-              <div className="response-empty">
-                Send a request to see the response
-              </div>
-            )}
-
-            {response && (
-              <>
-                <div className="response-meta">
-                  <span
-                    className={`response-status ${getStatusClass(response.status)}`}
-                  >
-                    {response.status} {response.statusText}
-                  </span>
-                  <span className="response-time">{response.time} ms</span>
-                  <span className="response-size">
-                    {formatSize(response.size)}
-                  </span>
-                </div>
-
-                {responsePanel === "body" && (
-                  <div className="response-body">
-                    <CodeEditor
-                      value={tryPrettyJson(response.body)}
-                      // eslint-disable-next-line @typescript-eslint/no-empty-function
-                      onChange={() => {}}
-                      language={detectResponseLanguage(response)}
-                      readOnly
-                    />
+                    {activeTab.auth.type === "basic" && (
+                      <div className="auth-fields">
+                        <div className="auth-field">
+                          <label className="auth-label">Username</label>
+                          <AutoSuggestInput
+                            className="auth-input"
+                            type="text"
+                            placeholder="{{username}} or enter username"
+                            value={activeTab.auth.username}
+                            onValueChange={(v) =>
+                              updateTab(activeTab.id, {
+                                auth: {
+                                  type: "basic",
+                                  username: v,
+                                  password:
+                                    activeTab.auth.type === "basic"
+                                      ? activeTab.auth.password
+                                      : "",
+                                },
+                              })
+                            }
+                            variables={activeEnv?.variables ?? []}
+                            envName={activeEnv?.name}
+                          />
+                        </div>
+                        <div className="auth-field">
+                          <label className="auth-label">Password</label>
+                          <AutoSuggestInput
+                            className="auth-input"
+                            type="text"
+                            placeholder="{{password}} or enter password"
+                            value={activeTab.auth.password}
+                            onValueChange={(v) =>
+                              updateTab(activeTab.id, {
+                                auth: {
+                                  type: "basic",
+                                  username:
+                                    activeTab.auth.type === "basic"
+                                      ? activeTab.auth.username
+                                      : "",
+                                  password: v,
+                                },
+                              })
+                            }
+                            variables={activeEnv?.variables ?? []}
+                            envName={activeEnv?.name}
+                          />
+                        </div>
+                        <div className="auth-info">
+                          Will send as: Authorization: Basic
+                          base64(username:password)
+                        </div>
+                      </div>
+                    )}
+                    {activeTab.auth.type === "none" && (
+                      <div className="auth-info" style={{ marginTop: 12 }}>
+                        No authentication will be applied to this request.
+                      </div>
+                    )}
                   </div>
                 )}
-
-                {responsePanel === "headers" && (
-                  <div className="response-headers-list">
-                    {Object.entries(response.headers).map(([key, value]) => (
-                      <div className="response-header-row" key={key}>
-                        <span className="response-header-key">{key}</span>
-                        <span className="response-header-value">{value}</span>
+                {requestPanel === "captures" && (
+                  <div className="captures-editor">
+                    <div className="captures-info">
+                      Extract values from responses and save them as environment
+                      variables.
+                      {!activeEnvId && (
+                        <span className="captures-warning">
+                          {" "}
+                          Select an environment first.
+                        </span>
+                      )}
+                    </div>
+                    {activeTab.captures.length === 0 && (
+                      <div className="captures-empty">
+                        No captures yet. Add one to extract response values into
+                        env variables.
+                      </div>
+                    )}
+                    {activeTab.captures.map((cap) => (
+                      <div className="capture-row" key={cap.id}>
+                        <input
+                          type="checkbox"
+                          checked={cap.enabled}
+                          onChange={(e) =>
+                            updateCapture(cap.id, { enabled: e.target.checked })
+                          }
+                        />
+                        <input
+                          className="capture-var-input"
+                          type="text"
+                          placeholder="Variable name"
+                          value={cap.varName}
+                          onChange={(e) =>
+                            updateCapture(cap.id, { varName: e.target.value })
+                          }
+                        />
+                        <span className="capture-eq">=</span>
+                        <select
+                          className="capture-source-select"
+                          value={cap.source}
+                          onChange={(e) =>
+                            updateCapture(cap.id, {
+                              source: e.target
+                                .value as ResponseCapture["source"],
+                            })
+                          }
+                        >
+                          <option value="body">Body (JSON path)</option>
+                          <option value="header">Header</option>
+                          <option value="status">Status code</option>
+                        </select>
+                        {cap.source !== "status" && (
+                          <input
+                            className="capture-path-input"
+                            type="text"
+                            placeholder={
+                              cap.source === "body"
+                                ? "data.token"
+                                : "x-request-id"
+                            }
+                            value={cap.path}
+                            onChange={(e) =>
+                              updateCapture(cap.id, { path: e.target.value })
+                            }
+                          />
+                        )}
+                        <button
+                          className="capture-remove-btn"
+                          onClick={() => removeCapture(cap.id)}
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
+                    <button className="capture-add-btn" onClick={addCapture}>
+                      + Add Capture
+                    </button>
                   </div>
                 )}
-              </>
-            )}
+              </div>
+
+              {/* Response Section */}
+              <div className="response-section">
+                <div className="tabs">
+                  {(["body", "headers"] as ResponsePanel[]).map((tab) => (
+                    <button
+                      key={tab}
+                      className={`tab ${responsePanel === tab ? "active" : ""}`}
+                      onClick={() => setResponsePanel(tab)}
+                    >
+                      {tab === "body" ? "Response Body" : "Response Headers"}
+                    </button>
+                  ))}
+                </div>
+
+                {error && <div className="response-error">{error}</div>}
+
+                {!response && !error && (
+                  <div className="response-empty">
+                    Send a request to see the response
+                  </div>
+                )}
+
+                {response && (
+                  <>
+                    <div className="response-meta">
+                      <span
+                        className={`response-status ${getStatusClass(response.status)}`}
+                      >
+                        {response.status} {response.statusText}
+                      </span>
+                      <span className="response-time">{response.time} ms</span>
+                      <span className="response-size">
+                        {formatSize(response.size)}
+                      </span>
+                    </div>
+
+                    {responsePanel === "body" && (
+                      <div className="response-body">
+                        <CodeEditor
+                          value={tryPrettyJson(response.body)}
+                          // eslint-disable-next-line @typescript-eslint/no-empty-function
+                          onChange={() => {}}
+                          language={detectResponseLanguage(response)}
+                          readOnly
+                        />
+                      </div>
+                    )}
+
+                    {responsePanel === "headers" && (
+                      <div className="response-headers-list">
+                        {Object.entries(response.headers).map(
+                          ([key, value]) => (
+                            <div className="response-header-row" key={key}>
+                              <span className="response-header-key">{key}</span>
+                              <span className="response-header-value">
+                                {value}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {sidebarSection !== "flows" && !hasVisibleTabs && (
+          <div className="flow-empty-state">
+            {sidebarSection === "history"
+              ? "Click a history entry to open it here"
+              : "Click a request or press + to get started"}
           </div>
-        </div>
+        )}
+
+        {sidebarSection === "flows" && (
+          <div className="flow-tab-content">
+            {(() => {
+              const activeFlowTab = flowTabs.find(
+                (ft) => ft.id === activeFlowTabId,
+              );
+              if (!activeFlowTab) {
+                return (
+                  <div className="flow-empty-state">
+                    Open or create a flow to get started
+                  </div>
+                );
+              }
+              const flow = flows.find((f) => f.id === activeFlowTab.flowId);
+              if (!flow) {
+                return (
+                  <div className="flow-empty-state">
+                    Flow not found — it may have been deleted
+                  </div>
+                );
+              }
+              if (activeFlowTab.mode === "runner" && flowRunState) {
+                return (
+                  <FlowRunner
+                    runState={flowRunState}
+                    onClose={() => {
+                      setFlowTabs((prev) =>
+                        prev.map((ft) =>
+                          ft.id === activeFlowTab.id
+                            ? { ...ft, mode: "editor" }
+                            : ft,
+                        ),
+                      );
+                      setFlowRunState(null);
+                    }}
+                    onAbort={() => {
+                      flowAbortRef.current = true;
+                    }}
+                  />
+                );
+              }
+              return (
+                <FlowEditor
+                  key={activeFlowTab.id}
+                  flow={flow}
+                  collections={collections}
+                  onSave={handleSaveFlow}
+                  onCancel={() => closeFlowTab(activeFlowTab.id)}
+                  onRun={runFlow}
+                  onChange={handleFlowChange}
+                />
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Environment Manager Modal */}
@@ -2493,35 +2998,6 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Flow Editor Overlay */}
-      {flowView.mode === "editor" && (
-        <div className="flow-overlay">
-          <FlowEditor
-            flow={flowView.flow}
-            collections={collections}
-            onSave={handleSaveFlow}
-            onCancel={() => setFlowView({ mode: "none" })}
-            onRun={runFlow}
-          />
-        </div>
-      )}
-
-      {/* Flow Runner Overlay */}
-      {flowView.mode === "runner" && flowRunState && (
-        <div className="flow-overlay">
-          <FlowRunner
-            runState={flowRunState}
-            onClose={() => {
-              setFlowView({ mode: "none" });
-              setFlowRunState(null);
-            }}
-            onAbort={() => {
-              flowAbortRef.current = true;
-            }}
-          />
         </div>
       )}
     </div>

@@ -158,6 +158,14 @@ export interface FlowRunState {
   totalTime: number;
 }
 
+export interface FlowTab {
+  id: string;
+  flowId: string;
+  name: string;
+  mode: "editor" | "runner";
+  isDirty: boolean;
+}
+
 export interface SessionState {
   tabs: RequestTab[];
   activeTabId: string;
@@ -182,6 +190,7 @@ export interface RequestTab {
   savedToCollectionId: string | null;
   savedRequestId: string | null;
   sourceHistoryId: string | null;
+  tabSource: "collections" | "history";
   isDirty: boolean;
 }
 
