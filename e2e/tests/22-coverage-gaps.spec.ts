@@ -581,6 +581,7 @@ test.describe("Error Handling", () => {
 
     await expect(page.locator(S.responseError)).toBeVisible();
     const errorText = await page.locator(S.responseError).textContent();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(errorText!.length).toBeGreaterThan(0);
   });
 

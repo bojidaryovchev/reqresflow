@@ -213,6 +213,7 @@ test.describe("Format Button", () => {
 
     const text = await cmContent.textContent();
     // Formatted JSON has indentation, making it longer than compact form
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(text!.length).toBeGreaterThan('{"a":1,"b":2}'.length);
   });
 });

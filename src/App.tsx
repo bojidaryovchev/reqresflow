@@ -1747,7 +1747,7 @@ const App: React.FC = () => {
         status: result.status,
         statusText: result.statusText,
         time: result.time,
-        request: getCurrentRequest()!,
+        request: getCurrentRequest(),
       };
       const updatedHistory = [entry, ...history].slice(0, 100); // keep max 100
       setHistory(updatedHistory);

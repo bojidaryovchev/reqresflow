@@ -46,15 +46,17 @@ test.describe("Sidebar", () => {
     const handleBox = await handle.boundingBox();
     expect(handleBox).toBeTruthy();
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await page.mouse.move(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.x + handleBox!.width / 2,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.y + handleBox!.height / 2,
     );
     await page.mouse.down();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await page.mouse.move(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.x + 100,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.y + handleBox!.height / 2,
       { steps: 5 },
     );
@@ -71,9 +73,10 @@ test.describe("Sidebar", () => {
     expect(handleBox).toBeTruthy();
 
     // Try to drag way to the left (below minimum)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await page.mouse.move(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.x + handleBox!.width / 2,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       handleBox!.y + handleBox!.height / 2,
     );
     await page.mouse.down();
