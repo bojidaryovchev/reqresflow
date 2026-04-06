@@ -11,7 +11,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test:e2e": "npx playwright test --config=e2e/playwright.config.ts"
+    "test:e2e": "npx playwright test --config=e2e/playwright.config.ts --reporter list"
   },
   "keywords": [],
   "author": {
