@@ -180,8 +180,9 @@ export const S = {
   savePickerList: ".save-picker-list",
   savePickerItem: ".save-picker-item",
 
-  // ── Flow Editor Overlay ──
-  flowOverlay: ".flow-overlay",
+  // ── Flow Editor (rendered as tab content, not an overlay) ──
+  flowTabContent: ".flow-tab-content",
+  flowEmptyState: ".flow-empty-state",
   flowEditor: ".flow-editor",
   flowEditorName: ".flow-editor-name",
   flowEditorActions: ".flow-editor-actions",
@@ -200,15 +201,37 @@ export const S = {
   flowStepRemove: ".flow-step-remove",
   flowStepDetail: ".flow-step-detail",
   flowStepCheckbox: ".flow-step-checkbox",
+  flowStepControls: ".flow-step-controls",
+  flowStepConnector: ".flow-step-connector",
   flowAddStepBtn: ".flow-add-step-btn",
   flowRequestPicker: ".flow-request-picker",
   flowRequestPickerItem: ".flow-request-picker-item",
 
-  // ── Flow Runner Overlay ──
+  // ── Flow Step Captures ──
+  flowStepCaptures: ".flow-step-captures",
+  flowStepCapturesHeader: ".flow-step-captures-header",
+  flowStepCapturesAdd: ".flow-step-captures-add",
+  flowStepCapturesEmpty: ".flow-step-captures-empty",
+  flowStepCaptureRow: ".flow-step-capture-row",
+  flowStepCaptureInput: ".flow-step-capture-input",
+  flowStepCaptureSelect: ".flow-step-capture-select",
+  flowStepCaptureRemove: ".flow-step-capture-remove",
+
+  // ── Flow Editor Last Run ──
+  flowEditorLastRun: ".flow-editor-last-run",
+  flowEditorLastRunHeader: ".flow-editor-last-run-header",
+  flowEditorLastRunTitle: ".flow-editor-last-run-title",
+  flowEditorLastRunSummary: ".flow-editor-last-run-summary",
+  flowEditorLastRunBody: ".flow-editor-last-run-body",
+  flowEditorLastRunSteps: ".flow-editor-last-run-steps",
+  flowEditorLastRunStep: '[class*="flow-editor-last-run-step"]',
+
+  // ── Flow Runner (rendered as tab content) ──
   flowRunner: ".flow-runner",
   flowRunnerHeader: ".flow-runner-header",
   flowRunnerTitle: ".flow-runner-title",
   flowRunnerSummary: ".flow-runner-summary",
+  flowRunnerRunning: ".flow-runner-running",
   flowRunnerSteps: ".flow-runner-steps",
   flowRunnerStep: ".flow-runner-step",
   flowRunnerStepIcon: ".flow-runner-step-icon",
@@ -220,6 +243,10 @@ export const S = {
   flowRunnerDetailTab: ".flow-runner-detail-tab",
   flowRunnerDetailEmpty: ".flow-runner-detail-empty",
   flowRunnerCapturesTable: ".flow-runner-captures-table",
+
+  // ── Sidebar Play Buttons ──
+  requestPlayBtn: ".request-play-btn",
+  requestVariantPlayBtn: ".request-variant-play",
 
   // ── AutoSuggest ──
   autosuggestWrapper: ".autosuggest-wrapper",

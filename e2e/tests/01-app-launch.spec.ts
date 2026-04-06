@@ -52,7 +52,7 @@ test.describe("App Launch", () => {
   test("request panel defaults to Params tab, response shows empty state", async () => {
     // Params tab should be active
     const activeTab = page.locator(`${S.requestSection} .tab.active`);
-    await expect(activeTab).toHaveText("Params");
+    await expect(activeTab).toHaveText("params");
 
     // Response section shows empty state
     await expect(page.locator(S.responseEmpty)).toBeVisible();

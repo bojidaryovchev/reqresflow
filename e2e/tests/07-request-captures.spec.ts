@@ -54,12 +54,16 @@ test.describe("Response Captures", () => {
     expect(values.some((v) => v.includes("Status"))).toBe(true);
   });
 
-  test("path input disabled when source is status", async () => {
+  test("path input hidden when source is status", async () => {
     const sourceSelect = page.locator(S.captureSourceSelect).first();
     await sourceSelect.selectOption("status");
 
-    const pathInput = page.locator(S.capturePathInput).first();
-    await expect(pathInput).toBeDisabled();
+    // Path input is conditionally removed (not just disabled) when source is status
+    await expect(page.locator(S.capturePathInput)).toHaveCount(0);
+
+    // Reset source back to body so subsequent tests have path input visible
+    await sourceSelect.selectOption("body");
+    await expect(page.locator(S.capturePathInput).first()).toBeVisible();
   });
 
   test("toggle capture enabled/disabled via checkbox", async () => {

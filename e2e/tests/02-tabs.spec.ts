@@ -47,16 +47,18 @@ test.describe("Tab Management", () => {
     await expect(page.locator(S.tabItem)).toHaveCount(1);
   });
 
-  test("closing last tab resets to empty instead of removing", async () => {
+  test("closing last tab shows empty state", async () => {
     // We have 1 tab. Close it.
     await expect(page.locator(S.tabItem)).toHaveCount(1);
     await page.locator(`${S.tabItem} ${S.tabClose}`).click();
 
-    // Still 1 tab, but it should be reset (empty URL, GET method)
+    // All tabs are removed — empty state shown
+    await expect(page.locator(S.tabItem)).toHaveCount(0);
+    await expect(page.locator(".empty-state")).toBeVisible();
+
+    // Create a new tab for subsequent tests
+    await page.click(S.tabAdd);
     await expect(page.locator(S.tabItem)).toHaveCount(1);
-    await expect(page.locator(S.methodSelect)).toHaveValue("GET");
-    const urlInput = page.locator(`${S.urlBar} .autosuggest-wrapper input`);
-    await expect(urlInput).toHaveValue("");
   });
 
   test("editing URL makes tab dirty (shows dot indicator)", async () => {
@@ -103,7 +105,7 @@ test.describe("Tab Management", () => {
     await expect(page.locator(S.tabItem)).toHaveCount(1);
   });
 
-  test("context menu Close All Tabs resets to single empty tab", async () => {
+  test("context menu Close All Tabs removes all tabs", async () => {
     // Add a second tab first
     await page.click(S.tabAdd);
     await expect(page.locator(S.tabItem)).toHaveCount(2);
@@ -112,8 +114,13 @@ test.describe("Tab Management", () => {
     await tab.click({ button: "right" });
     await page.click(`${S.tabContextMenu} button:has-text("Close All Tabs")`);
 
+    // All tabs removed — empty state
+    await expect(page.locator(S.tabItem)).toHaveCount(0);
+    await expect(page.locator(".empty-state")).toBeVisible();
+
+    // Create a tab for subsequent tests
+    await page.click(S.tabAdd);
     await expect(page.locator(S.tabItem)).toHaveCount(1);
-    await expect(page.locator(S.methodSelect)).toHaveValue("GET");
   });
 
   test("click outside context menu closes it", async () => {

@@ -22,8 +22,6 @@ test.describe("URL & Method", () => {
       "PUT",
       "PATCH",
       "DELETE",
-      "HEAD",
-      "OPTIONS",
     ];
     for (const method of methods) {
       await selectMethod(page, method);

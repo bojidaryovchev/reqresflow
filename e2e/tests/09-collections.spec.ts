@@ -50,13 +50,13 @@ test.describe("Collections CRUD", () => {
   test("expand/collapse collection via arrow click", async () => {
     const arrow = page.locator(S.collectionArrow).first();
 
+    // Collection starts expanded after creation, so first click collapses
+    await arrow.click();
+    await expect(page.locator(S.collectionRequests)).toHaveCount(0);
+
     // Click to expand
     await arrow.click();
     await expect(page.locator(S.collectionRequests).first()).toBeVisible();
-
-    // Click to collapse
-    await arrow.click();
-    await expect(page.locator(S.collectionRequests)).toHaveCount(0);
   });
 
   test("save request to collection via save + button on collection header", async () => {
@@ -64,11 +64,9 @@ test.describe("Collections CRUD", () => {
     await typeUrl(page, "https://httpbin.org/get");
     await selectMethod(page, "GET");
 
-    // Expand the collection
-    const arrow = page.locator(S.collectionArrow).first();
-    await arrow.click();
-
-    // Click the save "+" button on the collection header
+    // Collection is already expanded from previous test.
+    // Hover to reveal action buttons, then click save "+"
+    await page.locator(S.collectionHeader).first().hover();
     const collectionSaveBtn = page
       .locator(`${S.collectionHeader} ${S.sidebarIconBtn}`)
       .first();
@@ -79,7 +77,8 @@ test.describe("Collections CRUD", () => {
   });
 
   test("rename request in collection", async () => {
-    // Click edit button on the request
+    // Hover to reveal action buttons
+    await page.locator(S.requestItem).first().hover();
     const requestActions = page
       .locator(`${S.requestItem} ${S.collectionActions}`)
       .first();
@@ -96,6 +95,7 @@ test.describe("Collections CRUD", () => {
   });
 
   test("delete request from collection", async () => {
+    await page.locator(S.requestItem).first().hover();
     const requestActions = page
       .locator(`${S.requestItem} ${S.collectionActions}`)
       .first();
@@ -106,6 +106,7 @@ test.describe("Collections CRUD", () => {
   });
 
   test("delete collection removes it from list", async () => {
+    await page.locator(S.collectionHeader).first().hover();
     const collectionActions = page
       .locator(`${S.collectionHeader} ${S.collectionActions}`)
       .first();

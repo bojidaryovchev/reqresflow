@@ -55,18 +55,14 @@ test.describe("Keyboard Shortcuts", () => {
     await expect(page.locator(S.responseMeta)).toBeVisible();
   });
 
-  test("Escape closes context menu", async () => {
+  test("click outside closes context menu", async () => {
     // Open context menu
     const tab = page.locator(S.tabItem).first();
     await tab.click({ button: "right" });
     await expect(page.locator(S.tabContextMenu)).toBeVisible();
 
-    // Press Escape
-    await page.keyboard.press("Escape");
-
-    // Check if menu is hidden (context menu closes on any outside interaction)
-    // Note: the app uses mousedown-outside, not Escape, so this may not close it.
-    // The real test is click-outside which is covered in 02-tabs.spec.ts.
-    // This test verifies the Escape key behavior for dropdowns.
+    // Click outside to close the context menu
+    await page.locator(S.urlBar).click();
+    await expect(page.locator(S.tabContextMenu)).toBeHidden();
   });
 });

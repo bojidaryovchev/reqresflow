@@ -61,8 +61,8 @@ IPC channels: `collections:load/save`, `environments:load/save`, `history:load/s
 
 - Each `RequestTab` holds: method, url, params, headers, payloads, auth, captures, response, isDirty
 - Tabs use Framer Motion `<Reorder.Group>` for drag reorder
-- Opening a saved request ALWAYS creates a new tab (never reuses)
-- Last tab cannot be closed — it resets to a fresh empty tab instead
+- Opening a saved request reuses an existing tab if already open (focuses it)
+- Closing the last tab shows a "No open requests" empty state
 - Session auto-saves on every change
 
 ### Environment Variables

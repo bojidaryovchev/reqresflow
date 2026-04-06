@@ -101,21 +101,18 @@ test.describe("Sidebar", () => {
     await renameInput.fill("Test");
     await renameInput.press("Enter");
 
-    // Expand
+    // Collection starts expanded after creation, so first click collapses
     const arrow = page.locator(S.collectionArrow).first();
     await arrow.click();
-    await expect(page.locator(S.collectionRequests)).toBeVisible();
-
-    // Collapse
-    await arrow.click();
     await expect(page.locator(S.collectionRequests)).toHaveCount(0);
+
+    // Click again to expand
+    await arrow.click();
+    await expect(page.locator(S.collectionRequests)).toBeVisible();
   });
 
   test("empty collection shows placeholder text", async () => {
-    // Expand the collection
-    const arrow = page.locator(S.collectionArrow).first();
-    await arrow.click();
-
+    // Collection is already expanded from previous test
     // Should show empty state inside
     const emptyText = page.locator(`${S.collectionRequests} ${S.sidebarEmpty}`);
     await expect(emptyText).toBeVisible();

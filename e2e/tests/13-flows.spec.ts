@@ -45,13 +45,14 @@ test.describe("Flows", () => {
     await expect(page.locator(S.sidebarEmpty)).toBeVisible();
   });
 
-  test("create flow opens FlowEditor overlay", async () => {
+  test("create flow opens FlowEditor in a flow tab", async () => {
     await clickSidebarTab(page, "Flows");
 
     const addBtn = page.locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`);
     await addBtn.click();
 
-    await expect(page.locator(S.flowOverlay)).toBeVisible();
+    // Flow editor should appear inside the flow tab content area
+    await expect(page.locator(S.flowTabContent)).toBeVisible();
     await expect(page.locator(S.flowEditor)).toBeVisible();
   });
 
@@ -74,11 +75,12 @@ test.describe("Flows", () => {
     // Close the request picker first
     await page.locator(S.modalOverlay).click({ position: { x: 5, y: 5 } });
 
-    // Close the flow editor
+    // Close the flow editor tab via "Back" button
     await page.click(
       `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Back")`,
     );
-    await expect(page.locator(S.flowOverlay)).toBeHidden();
+    // Flow editor should no longer be visible (tab closed)
+    await expect(page.locator(S.flowEditor)).toBeHidden();
 
     // Set up a collection with a request for flow step picking
     await setupCollectionWithRequest();
@@ -108,21 +110,38 @@ test.describe("Flows", () => {
     await page.click(
       `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Save")`,
     );
-    await expect(page.locator(S.flowOverlay)).toBeHidden();
 
-    await clickSidebarTab(page, "Flows");
-    await expect(page.locator(S.flowItem)).toHaveCount(1);
-    await expect(page.locator(S.flowItemName).first()).toHaveText("Test Flow");
+    // After save, editor stays open (tab-based) but flow should be in sidebar
+    // There are 2 flows: "Login Flow" (unsaved test from earlier) and "Test Flow"
+    await expect(page.locator(S.flowItem)).toHaveCount(2);
+    await expect(
+      page.locator(`${S.flowItemName}:has-text("Test Flow")`),
+    ).toBeVisible();
+
+    // Close the flow tab via "Back" button
+    await page.click(
+      `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Back")`,
+    );
   });
 
   test("run flow shows FlowRunner with results", async () => {
     await clickSidebarTab(page, "Flows");
 
-    // Click the run button on the flow
-    const runBtn = page.locator(`${S.flowItem} ${S.sidebarIconBtn}`).first();
+    // Target "Test Flow" specifically (the flow that has a step)
+    const testFlowItem = page
+      .locator(S.flowItem)
+      .filter({ hasText: "Test Flow" });
+
+    // Hover to reveal action buttons (hidden until hover)
+    await testFlowItem.hover();
+
+    // Click the run button on the flow (▶ button, title="Run flow")
+    const runBtn = testFlowItem.locator(
+      `${S.sidebarIconBtn}[title="Run flow"]`,
+    );
     await runBtn.click();
 
-    // FlowRunner should appear
+    // FlowRunner should appear (replaces editor in the flow tab)
     await expect(page.locator(S.flowRunner)).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(S.flowRunnerTitle)).toHaveText("Flow Results");
 
@@ -150,10 +169,12 @@ test.describe("Flows", () => {
     expect(tabTexts.some((t) => t.includes("Request"))).toBe(true);
     expect(tabTexts.some((t) => t.includes("Captures"))).toBe(true);
 
-    // Close the runner
+    // Close the runner (switches back to editor mode in the flow tab)
     await page.click(
       `${S.flowRunnerHeader} ${S.flowEditorBtnSecondary}:has-text("Close")`,
     );
+    // Runner should be replaced by editor
     await expect(page.locator(S.flowRunner)).toBeHidden();
+    await expect(page.locator(S.flowEditor)).toBeVisible();
   });
 });

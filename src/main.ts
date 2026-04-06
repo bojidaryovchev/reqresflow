@@ -36,41 +36,68 @@ function getSessionPath(): string {
 ipcMain.handle("collections:load", () => {
   const filePath = getCollectionsPath();
   if (!fs.existsSync(filePath)) return [];
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.error("Failed to load collections:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("collections:save", (_event, collections: unknown) => {
-  fs.writeFileSync(
-    getCollectionsPath(),
-    JSON.stringify(collections, null, 2),
-    "utf-8",
-  );
+  try {
+    fs.writeFileSync(
+      getCollectionsPath(),
+      JSON.stringify(collections, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    console.error("Failed to save collections:", err);
+  }
 });
 
 // ── IPC: Environments ──
 ipcMain.handle("environments:load", () => {
   const filePath = getEnvironmentsPath();
   if (!fs.existsSync(filePath)) return [];
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.error("Failed to load environments:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("environments:save", (_event, environments: unknown) => {
-  fs.writeFileSync(
-    getEnvironmentsPath(),
-    JSON.stringify(environments, null, 2),
-    "utf-8",
-  );
+  try {
+    fs.writeFileSync(
+      getEnvironmentsPath(),
+      JSON.stringify(environments, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    console.error("Failed to save environments:", err);
+  }
 });
 
 // ── IPC: History ──
 ipcMain.handle("history:load", () => {
   const filePath = getHistoryPath();
   if (!fs.existsSync(filePath)) return [];
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.error("Failed to load history:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("history:save", (_event, history: unknown) => {
-  fs.writeFileSync(getHistoryPath(), JSON.stringify(history, null, 2), "utf-8");
+  try {
+    fs.writeFileSync(getHistoryPath(), JSON.stringify(history, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to save history:", err);
+  }
 });
 
 // ── IPC: Session ──
@@ -85,7 +112,11 @@ ipcMain.handle("session:load", () => {
 });
 
 ipcMain.handle("session:save", (_event, session: unknown) => {
-  fs.writeFileSync(getSessionPath(), JSON.stringify(session), "utf-8");
+  try {
+    fs.writeFileSync(getSessionPath(), JSON.stringify(session), "utf-8");
+  } catch (err) {
+    console.error("Failed to save session:", err);
+  }
 });
 
 // ── IPC: Flows ──
@@ -96,11 +127,20 @@ function getFlowsPath(): string {
 ipcMain.handle("flows:load", () => {
   const filePath = getFlowsPath();
   if (!fs.existsSync(filePath)) return [];
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.error("Failed to load flows:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("flows:save", (_event, flows: unknown) => {
-  fs.writeFileSync(getFlowsPath(), JSON.stringify(flows, null, 2), "utf-8");
+  try {
+    fs.writeFileSync(getFlowsPath(), JSON.stringify(flows, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to save flows:", err);
+  }
 });
 
 // ── IPC: HTTP Request Handler ──
@@ -124,10 +164,9 @@ ipcMain.handle(
         headers: { ...config.headers },
       };
 
-      if (config.body && ["POST", "PUT", "PATCH"].includes(config.method)) {
+      if (config.body && ["POST", "PUT", "PATCH", "DELETE"].includes(config.method)) {
         // For binary body type, read the file from disk
         if (config.bodyType === "binary" && config.body) {
-          const fs = await import("fs");
           if (fs.existsSync(config.body)) {
             fetchOptions.body = fs.readFileSync(config.body);
           } else {

@@ -78,17 +78,20 @@ test.describe("Save & Load Requests", () => {
   test("load request from collection opens new tab", async () => {
     await clickSidebarTab(page, "Collections");
 
-    // Expand collection
+    // Collection auto-expands when created, ensure it's expanded
     const arrow = page.locator(S.collectionArrow).first();
-    await arrow.click();
+    const arrowText = await arrow.textContent();
+    if (arrowText?.includes("\u25B6")) {
+      await arrow.click();
+    }
 
     const tabsBefore = await page.locator(S.tabItem).count();
 
-    // Click the saved request
+    // Click the saved request — reuses the existing tab (focuses it)
     await page.locator(S.requestItem).first().click();
 
     const tabsAfter = await page.locator(S.tabItem).count();
-    expect(tabsAfter).toBe(tabsBefore + 1);
+    expect(tabsAfter).toBe(tabsBefore);
   });
 
   test("active request is highlighted in sidebar", async () => {

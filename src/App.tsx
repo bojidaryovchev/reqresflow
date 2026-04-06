@@ -140,6 +140,149 @@ function buildQueryString(
   return filled.map((p) => `${p.key}=${p.value}`).join("&");
 }
 
+// Fields that represent request config (not response/UI state)
+const REQUEST_FIELDS = new Set([
+  "method",
+  "url",
+  "params",
+  "headers",
+  "payloads",
+  "activePayloadId",
+  "bodyType",
+  "rawLanguage",
+  "captures",
+  "auth",
+  "name",
+]);
+
+// Shared request-building logic used by both sendRequest and executeRequest
+function buildRequestConfig(input: {
+  method: string;
+  url: string;
+  params: { enabled: boolean; key: string; value: string }[];
+  headers: { enabled: boolean; key: string; value: string }[];
+  auth: AuthConfig;
+  bodyType: BodyType;
+  rawLanguage: string;
+  rawBody: string;
+  payload: Payload | null;
+  vars: { key: string; value: string }[];
+}): {
+  fullUrl: string;
+  headers: Record<string, string>;
+  body: string | undefined;
+} {
+  const { method, params, headers, auth, bodyType, rawLanguage, rawBody, payload, vars } = input;
+
+  // Build URL
+  const baseUrl = substituteVars(getBaseUrl(input.url.trim()), vars);
+  const enabledParams = params.filter((p) => p.enabled && p.key.trim());
+  let fullUrl = baseUrl;
+  if (enabledParams.length > 0) {
+    const qs = enabledParams
+      .map(
+        (p) =>
+          `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`,
+      )
+      .join("&");
+    fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
+  }
+
+  // Build headers
+  const headerObj: Record<string, string> = {
+    "User-Agent": "ReqResFlow/1.0",
+    Accept: "*/*",
+    "Accept-Encoding": "gzip, deflate, br",
+    Connection: "keep-alive",
+  };
+  headers
+    .filter((h) => h.enabled && h.key.trim())
+    .forEach((h) => {
+      headerObj[substituteVars(h.key, vars)] = substituteVars(h.value, vars);
+    });
+
+  // Apply auth
+  if (auth.type === "bearer" && auth.token.trim()) {
+    headerObj["Authorization"] =
+      `Bearer ${substituteVars(auth.token.trim(), vars)}`;
+  } else if (
+    auth.type === "basic" &&
+    (auth.username.trim() || auth.password.trim())
+  ) {
+    const user = substituteVars(auth.username, vars);
+    const pass = substituteVars(auth.password, vars);
+    headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
+  }
+
+  // Resolve body
+  const resolvedBody = (() => {
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) return undefined;
+    if (bodyType === "none") return undefined;
+    if (bodyType === "raw") return substituteVars(rawBody, vars);
+    if (bodyType === "graphql" && payload) {
+      const q = substituteVars(payload.graphql.query, vars);
+      const v = payload.graphql.variables.trim()
+        ? substituteVars(payload.graphql.variables, vars)
+        : undefined;
+      try {
+        return JSON.stringify({
+          query: q,
+          variables: v ? JSON.parse(v) : undefined,
+        });
+      } catch {
+        return JSON.stringify({ query: q, variables: v });
+      }
+    }
+    if (bodyType === "x-www-form-urlencoded" && payload) {
+      const pairs = payload.formData.filter((f) => f.enabled && f.key.trim());
+      return pairs
+        .map(
+          (f) =>
+            `${encodeURIComponent(substituteVars(f.key, vars))}=${encodeURIComponent(substituteVars(f.value, vars))}`,
+        )
+        .join("&");
+    }
+    if (bodyType === "form-data" && payload) {
+      const boundary = `----ReqResFlow${Date.now()}`;
+      const pairs = payload.formData.filter((f) => f.enabled && f.key.trim());
+      let multipart = "";
+      for (const f of pairs) {
+        multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
+      }
+      multipart += `--${boundary}--\r\n`;
+      headerObj["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
+      return multipart;
+    }
+    if (bodyType === "binary" && payload?.binaryFilePath) {
+      return payload.binaryFilePath;
+    }
+    return undefined;
+  })();
+
+  // Set Content-Type if not already set
+  const hasContentType = Object.keys(headerObj).some(
+    (k) => k.toLowerCase() === "content-type",
+  );
+  if (resolvedBody && !hasContentType) {
+    if (bodyType === "raw") {
+      const langMap: Record<string, string> = {
+        json: "application/json",
+        text: "text/plain",
+        xml: "application/xml",
+        html: "text/html",
+        javascript: "application/javascript",
+      };
+      headerObj["Content-Type"] = langMap[rawLanguage] || "text/plain";
+    } else if (bodyType === "x-www-form-urlencoded") {
+      headerObj["Content-Type"] = "application/x-www-form-urlencoded";
+    } else if (bodyType === "graphql") {
+      headerObj["Content-Type"] = "application/json";
+    }
+  }
+
+  return { fullUrl, headers: headerObj, body: resolvedBody };
+}
+
 function createEmptyTab(): RequestTabType {
   const payloadId = generateId();
   return {
@@ -391,21 +534,6 @@ const App: React.FC = () => {
 
   const activeEnv = environments.find((e) => e.id === activeEnvId) || null;
   const activeTab = tabs.find((t) => t.id === activeTabId) || null;
-
-  // Fields that represent request config (not response/UI state)
-  const REQUEST_FIELDS = new Set([
-    "method",
-    "url",
-    "params",
-    "headers",
-    "payloads",
-    "activePayloadId",
-    "bodyType",
-    "rawLanguage",
-    "captures",
-    "auth",
-    "name",
-  ]);
 
   // Helper to update the active tab
   const updateTab = useCallback(
@@ -961,24 +1089,6 @@ const App: React.FC = () => {
     [loadRequest],
   );
 
-  // Load a request with a specific payload variant and immediately send it
-  const runVariant = useCallback(
-    (
-      req: SavedRequest,
-      collectionId: string,
-      requestId: string,
-      payloadId: string,
-    ) => {
-      loadRequest(
-        { ...req, activePayloadId: payloadId },
-        collectionId,
-        requestId,
-      );
-      pendingSendRef.current = payloadId;
-    },
-    [loadRequest],
-  );
-
   // Sync payload rename from sidebar to open tab
   const handleRenamePayload = useCallback(
     (
@@ -1036,8 +1146,8 @@ const App: React.FC = () => {
           t.id === tab.id
             ? {
                 ...t,
-                savedToCollectionId: undefined,
-                savedRequestId: undefined,
+                savedToCollectionId: null,
+                savedRequestId: null,
               }
             : t,
         ),
@@ -1285,138 +1395,31 @@ const App: React.FC = () => {
       updatedVars: { key: string; value: string }[];
       captures: ResponseCapture[];
     }> => {
-      // Build URL
-      const baseUrl = substituteVars(getBaseUrl(req.url.trim()), vars);
-      const enabledParams = (req.params || []).filter(
-        (p) => p.enabled && p.key.trim(),
-      );
-      let fullUrl = baseUrl;
-      if (enabledParams.length > 0) {
-        const qs = enabledParams
-          .map(
-            (p) =>
-              `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`,
-          )
-          .join("&");
-        fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
-      }
-
-      // Build headers
-      const headerObj: Record<string, string> = {
-        "User-Agent": "ReqResFlow/1.0",
-        Accept: "*/*",
-        "Accept-Encoding": "gzip, deflate, br",
-        Connection: "keep-alive",
-      };
-      (req.headers || [])
-        .filter((h) => h.enabled && h.key.trim())
-        .forEach((h) => {
-          headerObj[substituteVars(h.key, vars)] = substituteVars(
-            h.value,
-            vars,
-          );
-        });
-
-      // Apply auth
-      const auth = req.auth || { type: "none" as const };
-      if (auth.type === "bearer" && auth.token.trim()) {
-        headerObj["Authorization"] =
-          `Bearer ${substituteVars(auth.token.trim(), vars)}`;
-      } else if (
-        auth.type === "basic" &&
-        (auth.username.trim() || auth.password.trim())
-      ) {
-        const user = substituteVars(auth.username, vars);
-        const pass = substituteVars(auth.password, vars);
-        headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
-      }
-
-      // Resolve body
-      const bodyType = req.bodyType || "none";
+      const bodyType = (req.bodyType || "none") as BodyType;
       const payload =
         req.payloads && req.payloads.length > 0
           ? req.payloads.find((p) => p.id === req.activePayloadId) ||
             req.payloads[0]
           : null;
 
-      const resolvedBody = (() => {
-        if (!["POST", "PUT", "PATCH"].includes(req.method)) return undefined;
-        if (bodyType === "none") return undefined;
-        if (bodyType === "raw") {
-          return substituteVars(payload?.body || req.body || "", vars);
-        }
-        if (bodyType === "graphql" && payload) {
-          const q = substituteVars(payload.graphql.query, vars);
-          const v = payload.graphql.variables.trim()
-            ? substituteVars(payload.graphql.variables, vars)
-            : undefined;
-          try {
-            return JSON.stringify({
-              query: q,
-              variables: v ? JSON.parse(v) : undefined,
-            });
-          } catch {
-            return JSON.stringify({ query: q, variables: v });
-          }
-        }
-        if (bodyType === "x-www-form-urlencoded" && payload) {
-          const pairs = payload.formData.filter(
-            (f) => f.enabled && f.key.trim(),
-          );
-          return pairs
-            .map(
-              (f) =>
-                `${encodeURIComponent(substituteVars(f.key, vars))}=${encodeURIComponent(substituteVars(f.value, vars))}`,
-            )
-            .join("&");
-        }
-        if (bodyType === "form-data" && payload) {
-          const boundary = `----ReqResFlow${Date.now()}`;
-          const pairs = payload.formData.filter(
-            (f) => f.enabled && f.key.trim(),
-          );
-          let multipart = "";
-          for (const f of pairs) {
-            multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
-          }
-          multipart += `--${boundary}--\r\n`;
-          headerObj["Content-Type"] =
-            `multipart/form-data; boundary=${boundary}`;
-          return multipart;
-        }
-        if (bodyType === "binary" && payload?.binaryFilePath) {
-          return payload.binaryFilePath;
-        }
-        return undefined;
-      })();
-
-      // Set Content-Type
-      const hasContentType = Object.keys(headerObj).some(
-        (k) => k.toLowerCase() === "content-type",
-      );
-      if (resolvedBody && !hasContentType) {
-        if (bodyType === "raw") {
-          const rawLang = req.rawLanguage || payload?.rawLanguage || "json";
-          const langMap: Record<string, string> = {
-            json: "application/json",
-            text: "text/plain",
-            xml: "application/xml",
-            html: "text/html",
-            javascript: "application/javascript",
-          };
-          headerObj["Content-Type"] = langMap[rawLang] || "text/plain";
-        } else if (bodyType === "x-www-form-urlencoded") {
-          headerObj["Content-Type"] = "application/x-www-form-urlencoded";
-        } else if (bodyType === "graphql") {
-          headerObj["Content-Type"] = "application/json";
-        }
-      }
+      const built = buildRequestConfig({
+        method: req.method,
+        url: req.url,
+        params: req.params || [],
+        headers: req.headers || [],
+        auth: req.auth || { type: "none" as const },
+        bodyType,
+        rawLanguage: req.rawLanguage || payload?.rawLanguage || "json",
+        rawBody: payload?.body || req.body || "",
+        payload,
+        vars,
+      });
 
       const detail: FlowStepExecutionDetail = {
-        resolvedUrl: fullUrl,
+        resolvedUrl: built.fullUrl,
         resolvedMethod: req.method,
-        resolvedHeaders: { ...headerObj },
-        resolvedBody,
+        resolvedHeaders: { ...built.headers },
+        resolvedBody: built.body,
         response: null,
         error: null,
         capturedValues: [],
@@ -1425,9 +1428,9 @@ const App: React.FC = () => {
       try {
         const result = await window.electronAPI.sendRequest({
           method: req.method,
-          url: fullUrl,
-          headers: headerObj,
-          body: resolvedBody,
+          url: built.fullUrl,
+          headers: built.headers,
+          body: built.body,
           bodyType,
         });
         detail.response = result;
@@ -1709,130 +1712,25 @@ const App: React.FC = () => {
 
     const vars = activeEnv?.variables || [];
 
-    // Build the final URL: use base URL + encode enabled params with substituted vars
-    const baseUrl = substituteVars(getBaseUrl(activeTab.url.trim()), vars);
-    const enabledParams = activeTab.params.filter(
-      (p) => p.enabled && p.key.trim(),
-    );
-    let fullUrl = baseUrl;
-    if (enabledParams.length > 0) {
-      const qs = enabledParams
-        .map(
-          (p) =>
-            `${encodeURIComponent(substituteVars(p.key, vars))}=${encodeURIComponent(substituteVars(p.value, vars))}`,
-        )
-        .join("&");
-      fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
-    }
-
-    // Build headers — start with auto-generated defaults (like Postman)
-    const headerObj: Record<string, string> = {
-      "User-Agent": "ReqResFlow/1.0",
-      Accept: "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      Connection: "keep-alive",
-    };
-    // User-defined headers override defaults
-    activeTab.headers
-      .filter((h) => h.enabled && h.key.trim())
-      .forEach((h) => {
-        headerObj[substituteVars(h.key, vars)] = substituteVars(h.value, vars);
-      });
-
-    // Apply auth
-    const auth = activeTab.auth;
-    if (auth.type === "bearer" && auth.token.trim()) {
-      headerObj["Authorization"] =
-        `Bearer ${substituteVars(auth.token.trim(), vars)}`;
-    } else if (
-      auth.type === "basic" &&
-      (auth.username.trim() || auth.password.trim())
-    ) {
-      const user = substituteVars(auth.username, vars);
-      const pass = substituteVars(auth.password, vars);
-      headerObj["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
-    }
-
-    const resolvedBody = (() => {
-      if (!["POST", "PUT", "PATCH"].includes(activeTab.method))
-        return undefined;
-      const bt = activeTab.bodyType;
-      if (bt === "none") return undefined;
-      if (bt === "raw") return substituteVars(body, vars);
-      if (bt === "graphql" && activePayload) {
-        const q = substituteVars(activePayload.graphql.query, vars);
-        const v = activePayload.graphql.variables.trim()
-          ? substituteVars(activePayload.graphql.variables, vars)
-          : undefined;
-        try {
-          return JSON.stringify({
-            query: q,
-            variables: v ? JSON.parse(v) : undefined,
-          });
-        } catch {
-          return JSON.stringify({ query: q, variables: v });
-        }
-      }
-      if (bt === "x-www-form-urlencoded" && activePayload) {
-        const pairs = activePayload.formData.filter(
-          (f) => f.enabled && f.key.trim(),
-        );
-        return pairs
-          .map(
-            (f) =>
-              `${encodeURIComponent(substituteVars(f.key, vars))}=${encodeURIComponent(substituteVars(f.value, vars))}`,
-          )
-          .join("&");
-      }
-      if (bt === "form-data" && activePayload) {
-        // For form-data we build a multipart boundary manually (text fields only)
-        const boundary = `----ReqResFlow${Date.now()}`;
-        const pairs = activePayload.formData.filter(
-          (f) => f.enabled && f.key.trim(),
-        );
-        let multipart = "";
-        for (const f of pairs) {
-          multipart += `--${boundary}\r\nContent-Disposition: form-data; name="${substituteVars(f.key, vars)}"\r\n\r\n${substituteVars(f.value, vars)}\r\n`;
-        }
-        multipart += `--${boundary}--\r\n`;
-        headerObj["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
-        return multipart;
-      }
-      if (bt === "binary" && activePayload?.binaryFilePath) {
-        return activePayload.binaryFilePath; // handled in main process
-      }
-      return undefined;
-    })();
-
-    // Set appropriate Content-Type if not already set
-    const hasContentType = Object.keys(headerObj).some(
-      (k) => k.toLowerCase() === "content-type",
-    );
-    if (resolvedBody && !hasContentType) {
-      const bt = activeTab.bodyType;
-      if (bt === "raw") {
-        const langMap: Record<string, string> = {
-          json: "application/json",
-          text: "text/plain",
-          xml: "application/xml",
-          html: "text/html",
-          javascript: "application/javascript",
-        };
-        headerObj["Content-Type"] =
-          langMap[activeTab.rawLanguage] || "text/plain";
-      } else if (bt === "x-www-form-urlencoded") {
-        headerObj["Content-Type"] = "application/x-www-form-urlencoded";
-      } else if (bt === "graphql") {
-        headerObj["Content-Type"] = "application/json";
-      }
-    }
+    const built = buildRequestConfig({
+      method: activeTab.method,
+      url: activeTab.url,
+      params: activeTab.params,
+      headers: activeTab.headers,
+      auth: activeTab.auth,
+      bodyType: activeTab.bodyType,
+      rawLanguage: activeTab.rawLanguage,
+      rawBody: body,
+      payload: activePayload,
+      vars,
+    });
 
     try {
       const result = await window.electronAPI.sendRequest({
         method: activeTab.method,
-        url: fullUrl,
-        headers: headerObj,
-        body: resolvedBody,
+        url: built.fullUrl,
+        headers: built.headers,
+        body: built.body,
         bodyType: activeTab.bodyType,
       });
       updateTab(activeTab.id, { response: result, error: null });
@@ -1865,6 +1763,7 @@ const App: React.FC = () => {
     activeTab,
     body,
     activeEnv,
+    activePayload,
     history,
     getCurrentRequest,
     updateTab,
@@ -1882,6 +1781,34 @@ const App: React.FC = () => {
       sendRequest();
     }
   }, [activeTab?.activePayloadId, activeTab?.id, sendRequest]);
+
+  // Load a request with a specific payload variant and immediately send it
+  const runVariant = useCallback(
+    (
+      req: SavedRequest,
+      collectionId: string,
+      requestId: string,
+      payloadId: string,
+    ) => {
+      // If already the active tab with the same payload, just send directly
+      if (
+        activeTab &&
+        activeTab.savedToCollectionId === collectionId &&
+        activeTab.savedRequestId === requestId &&
+        activeTab.activePayloadId === payloadId
+      ) {
+        sendRequest();
+        return;
+      }
+      loadRequest(
+        { ...req, activePayloadId: payloadId },
+        collectionId,
+        requestId,
+      );
+      pendingSendRef.current = payloadId;
+    },
+    [loadRequest, activeTab, sendRequest],
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendRequest();
@@ -2270,6 +2197,35 @@ const App: React.FC = () => {
                             <span className="header-key">Connection</span>
                             <span className="header-value">keep-alive</span>
                           </div>
+                          {activeTab.bodyType !== "none" &&
+                            activeTab.bodyType !== "binary" &&
+                            !activeTab.headers.some(
+                              (h) =>
+                                h.enabled &&
+                                h.key.toLowerCase() === "content-type",
+                            ) && (
+                              <div className="autogenerated-header-row">
+                                <span className="header-key">Content-Type</span>
+                                <span className="header-value">
+                                  {activeTab.bodyType === "raw"
+                                    ? {
+                                        json: "application/json",
+                                        text: "text/plain",
+                                        xml: "application/xml",
+                                        html: "text/html",
+                                        javascript: "application/javascript",
+                                      }[activeTab.rawLanguage] || "text/plain"
+                                    : activeTab.bodyType ===
+                                        "x-www-form-urlencoded"
+                                      ? "application/x-www-form-urlencoded"
+                                      : activeTab.bodyType === "form-data"
+                                        ? "multipart/form-data"
+                                        : activeTab.bodyType === "graphql"
+                                          ? "application/json"
+                                          : ""}
+                                </span>
+                              </div>
+                            )}
                         </div>
                       </>
                     )}
