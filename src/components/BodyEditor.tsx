@@ -1,6 +1,7 @@
 import React from "react";
-import AutoSuggestInput from "./AutoSuggestInput";
 import CodeEditor from "./CodeEditor";
+import FormDataEditor from "./FormDataEditor";
+import GraphQLEditor from "./GraphQLEditor";
 import {
   BodyType,
   Payload,
@@ -165,86 +166,13 @@ const BodyEditor: React.FC<BodyEditorProps> = ({
       {(tab.bodyType === "form-data" ||
         tab.bodyType === "x-www-form-urlencoded") &&
         activePayload && (
-          <div className="form-data-editor">
-            {activePayload.formData.map((field, i) => (
-              <div className="form-data-row" key={i}>
-                <input
-                  type="checkbox"
-                  checked={field.enabled}
-                  onChange={(e) => {
-                    const updated = [...activePayload.formData];
-                    updated[i] = { ...updated[i], enabled: e.target.checked };
-                    updateFormData(updated);
-                  }}
-                />
-                <AutoSuggestInput
-                  type="text"
-                  placeholder="Key"
-                  value={field.key}
-                  onValueChange={(v) => {
-                    const updated = [...activePayload.formData];
-                    updated[i] = { ...updated[i], key: v };
-                    updateFormData(updated);
-                  }}
-                  variables={envVariables}
-                  envName={envName}
-                />
-                <AutoSuggestInput
-                  type="text"
-                  placeholder="Value"
-                  value={field.value}
-                  onValueChange={(v) => {
-                    const updated = [...activePayload.formData];
-                    updated[i] = { ...updated[i], value: v };
-                    updateFormData(updated);
-                  }}
-                  variables={envVariables}
-                  envName={envName}
-                />
-                {tab.bodyType === "form-data" && (
-                  <select
-                    className="form-data-type-select"
-                    value={field.type}
-                    onChange={(e) => {
-                      const updated = [...activePayload.formData];
-                      updated[i] = {
-                        ...updated[i],
-                        type: e.target.value as "text" | "file",
-                      };
-                      updateFormData(updated);
-                    }}
-                  >
-                    <option value="text">Text</option>
-                    <option value="file">File</option>
-                  </select>
-                )}
-                <button
-                  className="kv-remove-btn"
-                  onClick={() => {
-                    const updated = activePayload.formData.filter(
-                      (_, j) => j !== i,
-                    );
-                    updateFormData(updated);
-                  }}
-                  title="Remove"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              className="kv-add-btn"
-              onClick={() => {
-                const updated = [
-                  ...activePayload.formData,
-                  { enabled: true, key: "", value: "", type: "text" as const },
-                ];
-                updateFormData(updated);
-              }}
-            >
-              + Add
-            </button>
-          </div>
+          <FormDataEditor
+            fields={activePayload.formData}
+            bodyType={tab.bodyType}
+            envVariables={envVariables}
+            envName={envName}
+            onUpdate={updateFormData}
+          />
         )}
       {tab.bodyType === "binary" && activePayload && (
         <div className="binary-editor">
@@ -269,49 +197,30 @@ const BodyEditor: React.FC<BodyEditorProps> = ({
         </div>
       )}
       {tab.bodyType === "graphql" && activePayload && (
-        <div className="graphql-editor">
-          <div className="graphql-section">
-            <label className="graphql-label">Query</label>
-            <CodeEditor
-              value={activePayload.graphql.query}
-              onChange={(val) =>
-                onUpdateTab({
-                  payloads: tab.payloads.map((p) =>
-                    p.id === tab.activePayloadId
-                      ? { ...p, graphql: { ...p.graphql, query: val } }
-                      : p,
-                  ),
-                })
-              }
-              language="javascript"
-              placeholder={"query {\n  users {\n    id\n    name\n  }\n}"}
-              className="graphql-query"
-              variables={envVariables}
-              envName={envName}
-            />
-          </div>
-          <div className="graphql-section">
-            <label className="graphql-label">Variables (JSON)</label>
-            <CodeEditor
-              value={activePayload.graphql.variables}
-              onChange={(val) =>
-                onUpdateTab({
-                  payloads: tab.payloads.map((p) =>
-                    p.id === tab.activePayloadId
-                      ? { ...p, graphql: { ...p.graphql, variables: val } }
-                      : p,
-                  ),
-                })
-              }
-              language="json"
-              placeholder='{"id": 1}'
-              className="graphql-variables"
-              showFormatButton
-              variables={envVariables}
-              envName={envName}
-            />
-          </div>
-        </div>
+        <GraphQLEditor
+          query={activePayload.graphql.query}
+          variables={activePayload.graphql.variables}
+          envVariables={envVariables}
+          envName={envName}
+          onQueryChange={(val) =>
+            onUpdateTab({
+              payloads: tab.payloads.map((p) =>
+                p.id === tab.activePayloadId
+                  ? { ...p, graphql: { ...p.graphql, query: val } }
+                  : p,
+              ),
+            })
+          }
+          onVariablesChange={(val) =>
+            onUpdateTab({
+              payloads: tab.payloads.map((p) =>
+                p.id === tab.activePayloadId
+                  ? { ...p, graphql: { ...p.graphql, variables: val } }
+                  : p,
+              ),
+            })
+          }
+        />
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FlowRunState } from "../types/electron";
 import { getStatusClass } from "../utils/helpers";
 import { METHOD_COLORS } from "../utils/http";
-import { StepDetail } from "./FlowRunner";
+import StepDetail from "./StepDetail";
 
 const LastRunSection: React.FC<{ runState: FlowRunState }> = ({ runState }) => {
   const [collapsed, setCollapsed] = useState(false);

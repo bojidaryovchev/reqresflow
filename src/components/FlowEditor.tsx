@@ -7,8 +7,9 @@ import {
   ResponseCapture,
 } from "../types/electron";
 import { generateId } from "../utils/helpers";
-import { METHOD_COLORS } from "../utils/http";
 import LastRunSection from "./LastRunSection";
+import FlowStepRow from "./FlowStepRow";
+import RequestPickerModal from "./RequestPickerModal";
 
 interface FlowEditorProps {
   flow: Flow;
@@ -190,159 +191,34 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
         {steps.map((step, index) => {
           const req = resolveRequest(step);
           const col = collections.find((c) => c.id === step.collectionId);
-          const isExpanded = expandedStepId === step.id;
 
           return (
-            <div className="flow-step" key={step.id}>
-              <div
-                className="flow-step-header"
-                onClick={() => setExpandedStepId(isExpanded ? null : step.id)}
-              >
-                <span className="flow-step-index">{index + 1}</span>
-                {req ? (
-                  <>
-                    <span
-                      className="flow-step-method"
-                      style={{
-                        color:
-                          METHOD_COLORS[req.method] || "var(--text-secondary)",
-                      }}
-                    >
-                      {req.method}
-                    </span>
-                    <span className="flow-step-name">{req.name}</span>
-                    <span className="flow-step-url">{req.url}</span>
-                  </>
-                ) : (
-                  <span className="flow-step-missing">
-                    Missing request
-                    {col ? "" : " (collection deleted)"}
-                  </span>
-                )}
-                <div className="flow-step-controls">
-                  <button
-                    className="flow-step-move"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveStep(index, -1);
-                    }}
-                    disabled={index === 0}
-                    title="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="flow-step-move"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveStep(index, 1);
-                    }}
-                    disabled={index === steps.length - 1}
-                    title="Move down"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="flow-step-remove"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeStep(step.id);
-                    }}
-                    title="Remove step"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="flow-step-detail">
-                  <label className="flow-step-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={step.continueOnError}
-                      onChange={() => toggleContinueOnError(step.id)}
-                    />
-                    Continue on error
-                  </label>
-
-                  <div className="flow-step-captures">
-                    <div className="flow-step-captures-header">
-                      <span>Step Captures</span>
-                      <button
-                        className="flow-step-captures-add"
-                        onClick={() => addStepCapture(step.id)}
-                      >
-                        + Capture
-                      </button>
-                    </div>
-                    {step.captures.length === 0 && (
-                      <div className="flow-step-captures-empty">
-                        No step-level captures. The request's own captures will
-                        still apply.
-                      </div>
-                    )}
-                    {step.captures.map((cap) => (
-                      <div className="flow-step-capture-row" key={cap.id}>
-                        <input
-                          className="flow-step-capture-input"
-                          placeholder="Variable name"
-                          value={cap.varName}
-                          onChange={(e) =>
-                            updateStepCapture(step.id, cap.id, {
-                              varName: e.target.value,
-                            })
-                          }
-                        />
-                        <select
-                          className="flow-step-capture-select"
-                          value={cap.source}
-                          onChange={(e) =>
-                            updateStepCapture(step.id, cap.id, {
-                              source: e.target.value as
-                                | "body"
-                                | "header"
-                                | "status",
-                            })
-                          }
-                        >
-                          <option value="body">Body</option>
-                          <option value="header">Header</option>
-                          <option value="status">Status</option>
-                        </select>
-                        <input
-                          className="flow-step-capture-input"
-                          placeholder={
-                            cap.source === "body"
-                              ? "JSON path (e.g. data.token)"
-                              : cap.source === "header"
-                                ? "Header name"
-                                : ""
-                          }
-                          value={cap.path}
-                          onChange={(e) =>
-                            updateStepCapture(step.id, cap.id, {
-                              path: e.target.value,
-                            })
-                          }
-                          disabled={cap.source === "status"}
-                        />
-                        <button
-                          className="flow-step-capture-remove"
-                          onClick={() => removeStepCapture(step.id, cap.id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {index < steps.length - 1 && (
-                <div className="flow-step-connector">↓</div>
-              )}
-            </div>
+            <FlowStepRow
+              key={step.id}
+              step={step}
+              index={index}
+              totalSteps={steps.length}
+              isExpanded={expandedStepId === step.id}
+              reqMethod={req?.method}
+              reqName={req?.name}
+              reqUrl={req?.url}
+              collectionFound={!!col}
+              onToggleExpand={() =>
+                setExpandedStepId(
+                  expandedStepId === step.id ? null : step.id,
+                )
+              }
+              onMoveStep={(dir) => moveStep(index, dir)}
+              onRemove={() => removeStep(step.id)}
+              onToggleContinueOnError={() => toggleContinueOnError(step.id)}
+              onAddCapture={() => addStepCapture(step.id)}
+              onUpdateCapture={(captureId, updates) =>
+                updateStepCapture(step.id, captureId, updates)
+              }
+              onRemoveCapture={(captureId) =>
+                removeStepCapture(step.id, captureId)
+              }
+            />
           );
         })}
       </div>
@@ -354,64 +230,12 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
         + Add Step
       </button>
 
-      {/* Request Picker Modal */}
       {showRequestPicker && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowRequestPicker(false)}
-        >
-          <div
-            className="flow-request-picker"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flow-request-picker-header">
-              <span>Add Request from Collection</span>
-              <button onClick={() => setShowRequestPicker(false)}>×</button>
-            </div>
-            <div className="flow-request-picker-body">
-              {collections.length === 0 ? (
-                <div className="flow-request-picker-empty">
-                  No collections yet. Save some requests first.
-                </div>
-              ) : (
-                collections.map((col) => (
-                  <div className="flow-request-picker-collection" key={col.id}>
-                    <div className="flow-request-picker-collection-name">
-                      {col.name}
-                    </div>
-                    {col.requests.length === 0 ? (
-                      <div className="flow-request-picker-empty">
-                        No requests in this collection.
-                      </div>
-                    ) : (
-                      col.requests.map((req) => (
-                        <button
-                          className="flow-request-picker-item"
-                          key={req.id}
-                          onClick={() => addStep(col.id, req.id)}
-                        >
-                          <span
-                            className="flow-request-picker-method"
-                            style={{
-                              color:
-                                METHOD_COLORS[req.method] ||
-                                "var(--text-secondary)",
-                            }}
-                          >
-                            {req.method}
-                          </span>
-                          <span className="flow-request-picker-name">
-                            {req.name}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <RequestPickerModal
+          collections={collections}
+          onAddStep={addStep}
+          onClose={() => setShowRequestPicker(false)}
+        />
       )}
 
       {/* Last Run Results */}

@@ -1,8 +1,11 @@
 import type {
   AuthConfig,
   BodyType,
+  FlowStepExecutionDetail,
   Payload,
   RequestTab,
+  ResponseCapture,
+  SavedRequest,
 } from "../types/electron";
 import { generateId } from "./helpers";
 import { substituteVars } from "./http";
@@ -246,4 +249,97 @@ export function getTabDisplayName(tab: RequestTab): string {
     }
   }
   return tab.name || "Untitled";
+}
+
+export async function executeRequest(
+  req: SavedRequest,
+  vars: { key: string; value: string }[],
+): Promise<{
+  detail: FlowStepExecutionDetail;
+  updatedVars: { key: string; value: string }[];
+  captures: ResponseCapture[];
+}> {
+  const bodyType = (req.bodyType || "none") as BodyType;
+  const payload =
+    req.payloads && req.payloads.length > 0
+      ? req.payloads.find((p) => p.id === req.activePayloadId) ||
+        req.payloads[0]
+      : null;
+
+  const built = buildRequestConfig({
+    method: req.method,
+    url: req.url,
+    params: req.params || [],
+    headers: req.headers || [],
+    auth: req.auth || { type: "none" as const },
+    bodyType,
+    rawLanguage: req.rawLanguage || payload?.rawLanguage || "json",
+    rawBody: payload?.body || req.body || "",
+    payload,
+    vars,
+  });
+
+  const detail: FlowStepExecutionDetail = {
+    resolvedUrl: built.fullUrl,
+    resolvedMethod: req.method,
+    resolvedHeaders: { ...built.headers },
+    resolvedBody: built.body,
+    response: null,
+    error: null,
+    capturedValues: [],
+  };
+
+  try {
+    const result = await window.electronAPI.sendRequest({
+      method: req.method,
+      url: built.fullUrl,
+      headers: built.headers,
+      body: built.body,
+      bodyType,
+    });
+    detail.response = result;
+
+    const allCaptures = req.captures || [];
+    const enabledCaptures = allCaptures.filter(
+      (c) => c.enabled && c.varName.trim(),
+    );
+    const updatedVars = [...vars];
+    for (const cap of enabledCaptures) {
+      let value = "";
+      if (cap.source === "status") {
+        value = String(result.status);
+      } else if (cap.source === "header") {
+        const headerKey = Object.keys(result.headers).find(
+          (k) => k.toLowerCase() === cap.path.toLowerCase(),
+        );
+        value = headerKey ? result.headers[headerKey] : "";
+      } else {
+        try {
+          const parsed = JSON.parse(result.body);
+          value = resolvePath(parsed, cap.path);
+        } catch {
+          value = "";
+        }
+      }
+      detail.capturedValues.push({
+        varName: cap.varName.trim(),
+        value,
+        source: cap.source,
+        path: cap.path,
+      });
+      const existing = updatedVars.findIndex(
+        (v) => v.key === cap.varName.trim(),
+      );
+      if (existing >= 0) {
+        updatedVars[existing] = { ...updatedVars[existing], value };
+      } else {
+        updatedVars.push({ key: cap.varName.trim(), value });
+      }
+    }
+
+    return { detail, updatedVars, captures: allCaptures };
+  } catch (err: unknown) {
+    detail.error = err instanceof Error ? err.message : String(err);
+    return { detail, updatedVars: vars, captures: [] };
+  }
 }
