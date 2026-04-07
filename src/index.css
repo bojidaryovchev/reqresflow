@@ -1297,6 +1297,54 @@ button {
   flex-direction: column;
   overflow: hidden;
   padding: 12px 16px;
+  position: relative;
+}
+
+.response-body-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.response-headers-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.response-toolbar-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.response-toolbar-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.response-toolbar-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.response-body.word-wrap-on .cm-editor .cm-line {
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.response-body.word-wrap-on .cm-editor .cm-content {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .response-body pre {

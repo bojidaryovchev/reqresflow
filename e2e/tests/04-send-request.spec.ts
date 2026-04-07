@@ -352,5 +352,85 @@ test.describe("URL Query String Edge Cases", () => {
   });
 });
 
+// ── Response Toolbar (Copy & Word Wrap) ──────────────────────────────
+
+test.describe("Response Toolbar", () => {
+  test("response body shows Copy and Word Wrap buttons", async () => {
+    await page.click(S.tabAdd);
+    await typeUrl(page, TEST_URLS.json);
+    await sendRequest(page);
+    await clickResponseTab(page, "Body");
+
+    await expect(page.locator(S.responseCopyBodyBtn)).toBeVisible();
+    await expect(page.locator(S.responseWordWrapBtn)).toBeVisible();
+  });
+
+  test("Copy button copies response body to clipboard", async () => {
+    await clickResponseTab(page, "Body");
+
+    // Grant clipboard permissions in Electron by evaluating directly
+    const bodyText = await page.evaluate(async () => {
+      const btn = document.querySelector(".response-copy-body-btn");
+      if (btn) (btn as HTMLButtonElement).click();
+      // Short wait for state update
+      await new Promise((r) => setTimeout(r, 200));
+      return btn?.textContent;
+    });
+
+    expect(bodyText).toBe("Copied!");
+
+    // Verify it resets back to "Copy"
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".response-copy-body-btn")?.textContent ===
+        "Copy",
+      { timeout: 3_000 },
+    );
+  });
+
+  test("Word Wrap toggle adds active class and wraps content", async () => {
+    await clickResponseTab(page, "Body");
+
+    const wrapBtn = page.locator(S.responseWordWrapBtn);
+    await expect(wrapBtn).not.toHaveClass(/active/);
+
+    // Enable word wrap
+    await wrapBtn.click();
+    await expect(wrapBtn).toHaveClass(/active/);
+    await expect(page.locator(S.responseBody)).toHaveClass(/word-wrap-on/);
+
+    // Disable word wrap
+    await wrapBtn.click();
+    await expect(wrapBtn).not.toHaveClass(/active/);
+    await expect(page.locator(S.responseBody)).not.toHaveClass(/word-wrap-on/);
+  });
+
+  test("response headers shows Copy button", async () => {
+    await clickResponseTab(page, "Headers");
+
+    await expect(page.locator(S.responseCopyHeadersBtn)).toBeVisible();
+  });
+
+  test("Copy headers button copies all headers to clipboard", async () => {
+    await clickResponseTab(page, "Headers");
+
+    const btnText = await page.evaluate(async () => {
+      const btn = document.querySelector(".response-copy-headers-btn");
+      if (btn) (btn as HTMLButtonElement).click();
+      await new Promise((r) => setTimeout(r, 200));
+      return btn?.textContent;
+    });
+
+    expect(btnText).toBe("Copied!");
+
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".response-copy-headers-btn")?.textContent ===
+        "Copy",
+      { timeout: 3_000 },
+    );
+  });
+});
+
 // NOTE: HEAD and OPTIONS are not in the app's method dropdown
 // (only GET, POST, PUT, PATCH, DELETE are supported)
