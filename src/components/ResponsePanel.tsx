@@ -65,9 +65,7 @@ const ResponsePanel: React.FC<ResponsePanelProps> = ({
       {error && <div className="response-error">{error}</div>}
 
       {!response && !error && (
-        <div className="response-empty">
-          Send a request to see the response
-        </div>
+        <div className="response-empty">Send a request to see the response</div>
       )}
 
       {response && (
