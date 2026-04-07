@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { launchApp, closeApp } from "../helpers/app";
 import { S } from "../helpers/selectors";
-import { typeUrl, TEST_URLS } from "../helpers/data";
+import {
+  typeUrl,
+  selectMethod,
+  clickRequestTab,
+  TEST_URLS,
+} from "../helpers/data";
 import type { Page } from "@playwright/test";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -76,5 +81,35 @@ test.describe("Keyboard Shortcuts", () => {
       await page.locator(S.modalOverlay).click({ position: { x: 5, y: 5 } });
       await expect(picker).toBeHidden();
     }
+  });
+
+  test("Shift+Alt+F formats body in code editor", async () => {
+    await page.click(S.tabAdd);
+    await selectMethod(page, "POST");
+    await typeUrl(page, TEST_URLS.post);
+
+    await clickRequestTab(page, "Body");
+    await page.locator(`${S.bodyTypeOption}:has-text("raw")`).click();
+    await page.selectOption(S.rawLanguageSelect, "json");
+
+    const cmContent = page.locator(`${S.requestSection} .cm-content`).first();
+    await cmContent.click();
+    await page.keyboard.type('{"a":1,"b":2}');
+    await page.waitForTimeout(300);
+
+    // Press Shift+Alt+F to format
+    await page.keyboard.press("Shift+Alt+f");
+
+    await page.waitForFunction(
+      () => {
+        const cm = document.querySelector(".request-section .cm-content");
+        const lines = cm?.querySelectorAll(".cm-line");
+        return lines && lines.length > 1;
+      },
+      { timeout: 5000 },
+    );
+
+    const text = await cmContent.textContent();
+    expect(text?.length ?? 0).toBeGreaterThan('{"a":1,"b":2}'.length);
   });
 });

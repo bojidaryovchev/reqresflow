@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef } from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { autocompletion } from "@codemirror/autocomplete";
+import { keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import type { RawLanguage } from "../types/electron";
 import {
@@ -66,13 +67,32 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, [value, language, onChange]);
 
+  const handleFormatRef = useRef(handleFormat);
+  handleFormatRef.current = handleFormat;
+
+  const formatKeymap = useMemo(
+    () =>
+      showFormatButton && !readOnly && language !== "text"
+        ? keymap.of([
+            {
+              key: "Shift-Alt-f",
+              run: () => {
+                handleFormatRef.current();
+                return true;
+              },
+            },
+          ])
+        : [],
+    [showFormatButton, readOnly, language],
+  );
+
   return (
     <div className={`code-editor-wrapper ${className || ""}`}>
       {showFormatButton && !readOnly && language !== "text" && (
         <button
           className="format-btn"
           onClick={handleFormat}
-          title="Format document (Prettier)"
+          title="Format document (Shift+Alt+F)"
         >
           Format
         </button>
@@ -82,7 +102,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         value={value}
         onChange={readOnly ? undefined : onChange}
         theme={vscodeDark}
-        extensions={extensions}
+        extensions={[...extensions, formatKeymap]}
         placeholder={placeholder}
         readOnly={readOnly}
         editable={!readOnly}

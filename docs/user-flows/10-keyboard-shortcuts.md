@@ -19,3 +19,9 @@
 1. When you're editing a name (collection, request, flow, or payload):
    - Press `Enter` to save the new name.
    - Press `Escape` to cancel and keep the old name.
+
+## Format Body (`Shift+Alt+F`)
+
+1. Click inside the code editor (raw body or GraphQL variables).
+2. Press `Shift+Alt+F`.
+3. The content is automatically formatted (same as clicking the "Format" button).

@@ -54,7 +54,7 @@
    - **raw** — type the body content directly
      - Pick a language from the dropdown: JSON, Text, XML, HTML, or JavaScript
      - Type or paste your content in the editor
-     - For JSON, there's a "Format" button to auto-indent your JSON
+     - For JSON, there's a "Format" button to auto-indent your JSON (or press `Shift+Alt+F`)
      - You can use `{{variables}}` in the body
 
    - **form-data** — like filling out a web form with multiple fields

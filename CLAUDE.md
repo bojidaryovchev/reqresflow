@@ -13,16 +13,16 @@ npm run test:e2e   # Playwright E2E tests (app must be built first)
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Desktop shell | Electron | 41.1.1 |
-| UI framework | React | 19 |
-| Language | TypeScript | ~4.5 |
-| Bundler | Vite (via Electron Forge) | 5.4 |
-| Animation | Motion (Framer Motion) | 12 |
-| Code editor | CodeMirror 6 (@uiw/react-codemirror) | 4.25 |
-| Styling | Single CSS file (CSS variables, dark theme) | — |
-| Testing | Playwright (Electron mode) | 1.59 |
+| Layer         | Technology                                  | Version |
+| ------------- | ------------------------------------------- | ------- |
+| Desktop shell | Electron                                    | 41.1.1  |
+| UI framework  | React                                       | 19      |
+| Language      | TypeScript                                  | ~4.5    |
+| Bundler       | Vite (via Electron Forge)                   | 5.4     |
+| Animation     | Motion (Framer Motion)                      | 12      |
+| Code editor   | CodeMirror 6 (@uiw/react-codemirror)        | 4.25    |
+| Styling       | Single CSS file (CSS variables, dark theme) | —       |
+| Testing       | Playwright (Electron mode)                  | 1.59    |
 
 ---
 
@@ -159,13 +159,13 @@ interface SessionState { tabs: RequestTab[], activeTabId: string, activeEnvId: s
 
 ### Persistence Layer
 
-| Entity | File | IPC Channels | Max Items |
-|--------|------|-------------|-----------|
-| Collections | `collections.json` | `collections:load/save` | Unlimited |
-| Environments | `environments.json` | `environments:load/save` | Unlimited |
-| History | `history.json` | `history:load/save` | 100 |
-| Flows | `flows.json` | `flows:load/save` | Unlimited |
-| Session | `session.json` | `session:load/save` | 1 (auto-save) |
+| Entity       | File                | IPC Channels             | Max Items     |
+| ------------ | ------------------- | ------------------------ | ------------- |
+| Collections  | `collections.json`  | `collections:load/save`  | Unlimited     |
+| Environments | `environments.json` | `environments:load/save` | Unlimited     |
+| History      | `history.json`      | `history:load/save`      | 100           |
+| Flows        | `flows.json`        | `flows:load/save`        | Unlimited     |
+| Session      | `session.json`      | `session:load/save`      | 1 (auto-save) |
 
 Data directory: `{userData}/reqresflow-data/` (created on first access). Tests use a temp directory via `ELECTRON_USER_DATA` env var.
 
@@ -175,47 +175,48 @@ Data directory: `{userData}/reqresflow-data/` (created on first access). Tests u
 
 ### Entry Points
 
-| File | Purpose |
-|------|---------|
-| `src/main.ts` | Electron main process — IPC handlers, HTTP proxy, window creation |
-| `src/preload.ts` | Context bridge — exposes `window.electronAPI` to renderer |
-| `src/renderer.tsx` | React bootstrap — renders `<App />` into `#root` |
-| `src/App.tsx` | Root component — orchestrates all hooks and renders layout |
+| File               | Purpose                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `src/main.ts`      | Electron main process — IPC handlers, HTTP proxy, window creation |
+| `src/preload.ts`   | Context bridge — exposes `window.electronAPI` to renderer         |
+| `src/renderer.tsx` | React bootstrap — renders `<App />` into `#root`                  |
+| `src/App.tsx`      | Root component — orchestrates all hooks and renders layout        |
 
 ### Custom Hooks (`src/hooks/`)
 
-| Hook | Purpose | Key State |
-|------|---------|-----------|
-| `useTabs` | Request tab CRUD, active tab tracking | `tabs[]`, `activeTabId` |
-| `useCollections` | Collection persistence | `collections[]` |
-| `useEnvironments` | Environment CRUD, active env selection | `environments[]`, `activeEnvId` |
-| `useHistory` | Request history tracking | `history[]` |
-| `useFlowTabs` | Flow tab CRUD, flow lifecycle | `flows[]`, `flowTabs[]`, `activeFlowTabId` |
-| `useFlowExecution` | Sequential flow step execution | `flowRunState`, `flowRunHistory` |
-| `useSendRequest` | HTTP request sending, capture extraction | Ref-based pending state |
-| `usePayloads` | Body variant and capture management | Derived from `activeTab` |
-| `useSaveToCollection` | Save dialog, Ctrl+S handling | `showSavePicker` |
-| `useSession` | Load/save all state on startup/change | `sessionLoaded` |
-| `useSidebarResize` | Draggable sidebar width | `sidebarWidth` (160–600px) |
-| `useContextMenu` | Right-click tab menus | `menu: {x, y, tabId}` |
+| Hook                  | Purpose                                  | Key State                                  |
+| --------------------- | ---------------------------------------- | ------------------------------------------ |
+| `useTabs`             | Request tab CRUD, active tab tracking    | `tabs[]`, `activeTabId`                    |
+| `useCollections`      | Collection persistence                   | `collections[]`                            |
+| `useEnvironments`     | Environment CRUD, active env selection   | `environments[]`, `activeEnvId`            |
+| `useHistory`          | Request history tracking                 | `history[]`                                |
+| `useFlowTabs`         | Flow tab CRUD, flow lifecycle            | `flows[]`, `flowTabs[]`, `activeFlowTabId` |
+| `useFlowExecution`    | Sequential flow step execution           | `flowRunState`, `flowRunHistory`           |
+| `useSendRequest`      | HTTP request sending, capture extraction | Ref-based pending state                    |
+| `usePayloads`         | Body variant and capture management      | Derived from `activeTab`                   |
+| `useSaveToCollection` | Save dialog, Ctrl+S handling             | `showSavePicker`                           |
+| `useSession`          | Load/save all state on startup/change    | `sessionLoaded`                            |
+| `useSidebarResize`    | Draggable sidebar width                  | `sidebarWidth` (160–600px)                 |
+| `useContextMenu`      | Right-click tab menus                    | `menu: {x, y, tabId}`                      |
 
 ### Utility Modules (`src/utils/`)
 
-| Module | Purpose | Key Exports |
-|--------|---------|-------------|
-| `request-builder.ts` | Build HTTP request from tab state | `buildRequestConfig()`, `REQUEST_FIELDS` |
-| `request-execution.ts` | Execute single request (for flows) | `executeRequest()` |
-| `request.ts` | Empty tab factory, path resolution | `createEmptyTab()`, `resolvePath()`, `getTabDisplayName()` |
-| `captures.ts` | Extract response values into env vars | `extractCaptures()` |
-| `http.ts` | Variable substitution, response detection | `substituteVars()`, `detectResponseLanguage()`, `METHOD_COLORS` |
-| `url.ts` | URL parsing and query string building | `parseQueryParams()`, `getBaseUrl()`, `buildQueryString()` |
-| `helpers.ts` | ID generation, formatting | `generateId()`, `formatSize()`, `getStatusClass()`, `tryPrettyJson()` |
-| `http-headers.ts` | HTTP header autocomplete data | `HTTP_HEADER_NAMES`, `HEADER_VALUE_SUGGESTIONS` |
+| Module                     | Purpose                                    | Key Exports                                                                       |
+| -------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `request-builder.ts`       | Build HTTP request from tab state          | `buildRequestConfig()`, `REQUEST_FIELDS`                                          |
+| `request-execution.ts`     | Execute single request (for flows)         | `executeRequest()`                                                                |
+| `request.ts`               | Empty tab factory, path resolution         | `createEmptyTab()`, `resolvePath()`, `getTabDisplayName()`                        |
+| `captures.ts`              | Extract response values into env vars      | `extractCaptures()`                                                               |
+| `http.ts`                  | Variable substitution, response detection  | `substituteVars()`, `detectResponseLanguage()`, `METHOD_COLORS`                   |
+| `url.ts`                   | URL parsing and query string building      | `parseQueryParams()`, `getBaseUrl()`, `buildQueryString()`                        |
+| `helpers.ts`               | ID generation, formatting                  | `generateId()`, `formatSize()`, `getStatusClass()`, `tryPrettyJson()`             |
+| `http-headers.ts`          | HTTP header autocomplete data              | `HTTP_HEADER_NAMES`, `HEADER_VALUE_SUGGESTIONS`                                   |
 | `codemirror-extensions.ts` | CodeMirror env var highlighting/completion | `envVarHighlightPlugin`, `envVarCompletion`, `envVarHoverTooltip`, `formatCode()` |
 
 ### Components (`src/components/`) — 46 files
 
 **Layout & Navigation:**
+
 - `Sidebar.tsx` — Main sidebar with section tabs (Collections, History, Flows)
 - `EnvironmentBar.tsx` — Request name + env selector above URL bar
 - `UrlBar.tsx` — Method dropdown + URL input + Send/Save buttons
@@ -223,6 +224,7 @@ Data directory: `{userData}/reqresflow-data/` (created on first access). Tests u
 - `TabContextMenu.tsx` — Right-click menu: Duplicate, Close, Close All
 
 **Request Building:**
+
 - `RequestPanelSection.tsx` — Tab router: Params, Headers, Body, Auth, Captures
 - `KeyValueEditor.tsx` + `KeyValueRow.tsx` — Generic key-value editor (params, headers)
 - `BodyEditor.tsx` — Routes to correct editor by body type
@@ -236,21 +238,25 @@ Data directory: `{userData}/reqresflow-data/` (created on first access). Tests u
 - `AutoGeneratedHeaders.tsx` — Shows auto-added headers (Content-Type, User-Agent, etc.)
 
 **Autocomplete System:**
+
 - `AutoSuggestInput.tsx` — Dual-mode input: `{{varName}}` insertion + plain suggestions
 - `SuggestionDropdown.tsx` — Portal-rendered dropdown (positioned at cursor)
 - `VariableHighlightOverlay.tsx` — Invisible overlay highlighting `{{var}}` in inputs
 - `VariableValueTooltip.tsx` — Portal tooltip showing variable value on hover
 
 **Response Viewing:**
+
 - `ResponsePanel.tsx` — Response body (CodeMirror, read-only) + headers + metadata
 
 **Collections & Sidebar:**
+
 - `CollectionsSection.tsx` — Expandable collection groups with request items
 - `CollectionRequestItem.tsx` — Single request with method badge, rename, variant children
 - `HistorySection.tsx` + `HistoryItem.tsx` — Recent request list with timestamps
 - `FlowsSection.tsx` + `FlowItem.tsx` — Flow list in sidebar
 
 **Flow Editor & Runner:**
+
 - `FlowEditor.tsx` — Edit flow name, add/remove/reorder steps, configure captures
 - `FlowStepRow.tsx` — Single step: request reference, captures, continue-on-error
 - `FlowRunner.tsx` — Live execution view with step-by-step results
@@ -262,6 +268,7 @@ Data directory: `{userData}/reqresflow-data/` (created on first access). Tests u
 - `StepCaptureRow.tsx` — Step-level capture row (different from request-level)
 
 **Modals:**
+
 - `EnvManager.tsx` — Full environment management modal
 - `EnvListPanel.tsx` + `EnvDetailPanel.tsx` — Env list + variable editor
 - `SavePickerModal.tsx` — Pick collection to save request
@@ -292,6 +299,7 @@ App.tsx calls:
 ```
 
 App.tsx has only 4 direct useState calls:
+
 - `requestPanel`: which request section tab is shown
 - `responsePanel`: which response section tab is shown
 - `loading`: request in flight
@@ -317,7 +325,10 @@ Variables use `{{varName}}` syntax. Substitution happens at **send time** (never
 
 ```typescript
 // src/utils/http.ts
-function substituteVars(text: string, vars: {key: string; value: string}[]): string
+function substituteVars(
+  text: string,
+  vars: { key: string; value: string }[],
+): string;
 ```
 
 Substituted in: URL, query params, headers, body, auth token/credentials. The `buildRequestConfig()` function in `request-builder.ts` handles all substitution.
@@ -336,6 +347,7 @@ Sources: `"body"` (dot-notation JSON path like `data.token`), `"header"` (header
 ### 5. Flow Execution
 
 Flows execute steps sequentially. Each step:
+
 1. Looks up the referenced `SavedRequest` via `(collectionId, requestId)`
 2. Merges request-level captures with step-level captures
 3. Substitutes current environment variables
@@ -352,6 +364,7 @@ Tabs track dirty state via `isDirty: boolean`. The `REQUEST_FIELDS` set in `requ
 ### 7. Tab Duality
 
 The app has two independent tab systems that toggle based on `sidebarSection`:
+
 - **Request tabs** (default) — shown when sidebar is on Collections, History, or Environments
 - **Flow tabs** — shown when sidebar is on Flows
 
@@ -360,6 +373,7 @@ Both use Framer Motion `Reorder.Group` for drag-to-reorder.
 ### 8. CodeMirror Integration
 
 All code editing (request body, GraphQL, response viewer) uses `CodeEditor.tsx` which wraps `@uiw/react-codemirror`. Custom extensions in `codemirror-extensions.ts` provide:
+
 - `{{varName}}` syntax highlighting
 - Variable autocomplete
 - Hover tooltips for variable values
@@ -368,6 +382,7 @@ All code editing (request body, GraphQL, response viewer) uses `CodeEditor.tsx` 
 ### 9. Portal Components
 
 Dropdowns and tooltips render via `createPortal(el, document.body)` to escape overflow:hidden containers:
+
 - `SuggestionDropdown` — autocomplete list
 - `VariableValueTooltip` — variable hover preview
 
@@ -380,13 +395,26 @@ Single file: `src/index.css`. Dark theme using CSS custom properties.
 ### Key Variables
 
 ```css
---bg-primary: #1e1e1e;     --bg-secondary: #252526;    --bg-tertiary: #2d2d2d;
---bg-input: #3c3c3c;        --bg-hover: #383838;        --bg-active: #094771;
---border: #404040;           --accent: #0078d4;          --accent-hover: #1a8ae8;
---text-primary: #cccccc;     --text-secondary: #999999;  --text-muted: #666666;
---success: #4ec9b0;          --warning: #dcdcaa;         --error: #f44747;
---method-get: #61affe;       --method-post: #49cc90;     --method-put: #fca130;
---method-patch: #c490e4;     --method-delete: #f93e3e;
+--bg-primary: #1e1e1e;
+--bg-secondary: #252526;
+--bg-tertiary: #2d2d2d;
+--bg-input: #3c3c3c;
+--bg-hover: #383838;
+--bg-active: #094771;
+--border: #404040;
+--accent: #0078d4;
+--accent-hover: #1a8ae8;
+--text-primary: #cccccc;
+--text-secondary: #999999;
+--text-muted: #666666;
+--success: #4ec9b0;
+--warning: #dcdcaa;
+--error: #f44747;
+--method-get: #61affe;
+--method-post: #49cc90;
+--method-put: #fca130;
+--method-patch: #c490e4;
+--method-delete: #f93e3e;
 --font-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
 --radius: 4px;
 ```
@@ -477,6 +505,7 @@ saveFlows(flows: Flow[]): Promise<void>
 ### Adding a New Hook
 
 Follow existing patterns:
+
 ```typescript
 import { useState, useCallback } from "react";
 
@@ -543,6 +572,7 @@ Wire into `App.tsx` and pass returned values as props to child components.
 ### "I want to add keyboard shortcuts"
 
 Look at `useSaveToCollection.ts` for the Ctrl+S pattern:
+
 ```typescript
 useEffect(() => {
   const handler = (e: KeyboardEvent) => {
