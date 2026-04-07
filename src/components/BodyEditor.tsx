@@ -1,10 +1,10 @@
 import React from "react";
+import { Payload, RequestTab } from "../types/electron";
 import BodyTypeSelector from "./BodyTypeSelector";
 import CodeEditor from "./CodeEditor";
 import FormDataEditor from "./FormDataEditor";
 import GraphQLEditor from "./GraphQLEditor";
 import PayloadTabsBar from "./PayloadTabsBar";
-import { BodyType, Payload, RawLanguage, RequestTab } from "../types/electron";
 
 interface BodyEditorProps {
   tab: RequestTab;

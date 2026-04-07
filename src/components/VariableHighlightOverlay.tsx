@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React from "react";
 
 interface VariableHighlightOverlayProps {
   parts: { text: string; isVar: boolean }[];
