@@ -12,13 +12,13 @@ ReqResFlow saves all your data as files on your computer. Everything is saved au
 
 ## When Does Saving Happen?
 
-| Data          | Saved when...                                                                                  |
-| ------------- | ---------------------------------------------------------------------------------------------- |
-| Collections   | You create, delete, rename, or update a collection or request.                                 |
-| Environments  | You edit variables, or when captures update a variable after sending a request.                 |
-| History       | You send a request or clear history.                                                           |
-| Session       | You open/close/switch tabs, edit a request, or change environments.                            |
-| Flows         | You create, delete, rename, or save a flow.                                                    |
+| Data         | Saved when...                                                                   |
+| ------------ | ------------------------------------------------------------------------------- |
+| Collections  | You create, delete, rename, or update a collection or request.                  |
+| Environments | You edit variables, or when captures update a variable after sending a request. |
+| History      | You send a request or clear history.                                            |
+| Session      | You open/close/switch tabs, edit a request, or change environments.             |
+| Flows        | You create, delete, rename, or save a flow.                                     |
 
 ## What Happens If the App Crashes?
 

@@ -45,9 +45,7 @@ test.describe("Sidebar Structure", () => {
     await expect(flowsTab).toHaveClass(/active/);
 
     await clickSidebarTab(page, "History");
-    const historyTab = page.locator(
-      `.sidebar-section-tab:has-text("History")`,
-    );
+    const historyTab = page.locator(`.sidebar-section-tab:has-text("History")`);
     await expect(historyTab).toHaveClass(/active/);
   });
 
@@ -66,9 +64,7 @@ test.describe("Sidebar Structure", () => {
     await expect(collectionsTab).not.toHaveClass(/active/);
 
     await clickSidebarTab(page, "Flows");
-    const flowsTab = page.locator(
-      `${S.sidebarSectionTab}:has-text("Flows")`,
-    );
+    const flowsTab = page.locator(`${S.sidebarSectionTab}:has-text("Flows")`);
     await expect(flowsTab).toHaveClass(/active/);
 
     await clickSidebarTab(page, "Collections");
@@ -90,10 +86,7 @@ test.describe("Sidebar Structure", () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ib = initialBox!;
 
-    await page.mouse.move(
-      hb.x + hb.width / 2,
-      hb.y + hb.height / 2,
-    );
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
     await page.mouse.down();
     await page.mouse.move(hb.x + 100, hb.y + hb.height / 2, {
       steps: 5,
@@ -113,10 +106,7 @@ test.describe("Sidebar Structure", () => {
     const hb = handleBox!;
 
     // Try to drag way to the left (below minimum)
-    await page.mouse.move(
-      hb.x + hb.width / 2,
-      hb.y + hb.height / 2,
-    );
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
     await page.mouse.down();
     await page.mouse.move(50, hb.y + hb.height / 2, {
       steps: 5,
@@ -150,9 +140,7 @@ test.describe("Sidebar Structure", () => {
   });
 
   test("empty collection shows placeholder text", async () => {
-    const emptyText = page.locator(
-      `${S.collectionRequests} ${S.sidebarEmpty}`,
-    );
+    const emptyText = page.locator(`${S.collectionRequests} ${S.sidebarEmpty}`);
     await expect(emptyText).toBeVisible();
   });
 });
@@ -228,9 +216,7 @@ test.describe("Sidebar Actions", () => {
       await actPage.locator(S.collectionHeader).first().click();
     }
 
-    const playBtn = actPage.locator(
-      `${S.requestItem} ${S.requestPlayBtn}`,
-    );
+    const playBtn = actPage.locator(`${S.requestItem} ${S.requestPlayBtn}`);
     await expect(playBtn.first()).toBeVisible();
   });
 
@@ -364,8 +350,7 @@ test.describe("Payload Rename (sidebar)", () => {
     // Make hover-only actions visible
     await renPage.evaluate(() => {
       const style = document.createElement("style");
-      style.textContent =
-        ".collection-actions { display: flex !important; }";
+      style.textContent = ".collection-actions { display: flex !important; }";
       document.head.appendChild(style);
     });
 

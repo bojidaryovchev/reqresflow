@@ -68,7 +68,11 @@ export function useSendRequest({
 
       const updatedEnvs = environments.map((env) => {
         if (env.id !== activeEnvId) return env;
-        const { updatedVars } = extractCaptures(result, captures, env.variables);
+        const { updatedVars } = extractCaptures(
+          result,
+          captures,
+          env.variables,
+        );
         return { ...env, variables: updatedVars };
       });
 

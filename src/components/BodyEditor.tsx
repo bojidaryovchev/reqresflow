@@ -4,12 +4,7 @@ import CodeEditor from "./CodeEditor";
 import FormDataEditor from "./FormDataEditor";
 import GraphQLEditor from "./GraphQLEditor";
 import PayloadTabsBar from "./PayloadTabsBar";
-import {
-  BodyType,
-  Payload,
-  RawLanguage,
-  RequestTab,
-} from "../types/electron";
+import { BodyType, Payload, RawLanguage, RequestTab } from "../types/electron";
 
 interface BodyEditorProps {
   tab: RequestTab;
@@ -37,7 +32,12 @@ const BodyEditor: React.FC<BodyEditorProps> = ({
   onUpdatePayloadBody,
 }) => {
   const updateFormData = (
-    updated: { enabled: boolean; key: string; value: string; type: "text" | "file" }[],
+    updated: {
+      enabled: boolean;
+      key: string;
+      value: string;
+      type: "text" | "file";
+    }[],
   ) => {
     onUpdateTab({
       payloads: tab.payloads.map((p) =>
@@ -65,9 +65,7 @@ const BodyEditor: React.FC<BodyEditorProps> = ({
         onRenamePayload={onRenamePayload}
       />
       {tab.bodyType === "none" && (
-        <div className="body-none-info">
-          This request does not have a body.
-        </div>
+        <div className="body-none-info">This request does not have a body.</div>
       )}
       {tab.bodyType === "raw" && (
         <CodeEditor

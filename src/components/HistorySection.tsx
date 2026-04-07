@@ -8,7 +8,6 @@ interface HistorySectionProps {
   onClearHistory: () => void;
 }
 
-
 const HistorySection: React.FC<HistorySectionProps> = ({
   history,
   onLoadHistory,

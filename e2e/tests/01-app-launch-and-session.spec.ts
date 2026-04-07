@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { launchApp, closeApp, restartApp, readData, getDataDir } from "../helpers/app";
+import {
+  launchApp,
+  closeApp,
+  restartApp,
+  readData,
+  getDataDir,
+} from "../helpers/app";
 import { S } from "../helpers/selectors";
 import { typeUrl, selectMethod } from "../helpers/data";
 import fs from "node:fs";
@@ -126,8 +132,16 @@ test.describe("Corrupted Data Resilience", () => {
 
     const dataDir = path.join(getDataDir(), "reqresflow-data");
     fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(path.join(dataDir, "collections.json"), "NOT VALID JSON{{{", "utf-8");
-    fs.writeFileSync(path.join(dataDir, "environments.json"), "BROKEN", "utf-8");
+    fs.writeFileSync(
+      path.join(dataDir, "collections.json"),
+      "NOT VALID JSON{{{",
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dataDir, "environments.json"),
+      "BROKEN",
+      "utf-8",
+    );
     fs.writeFileSync(path.join(dataDir, "history.json"), "<<<>>>", "utf-8");
 
     ({ page } = await restartApp());

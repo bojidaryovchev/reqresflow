@@ -4,15 +4,8 @@ import AuthEditor from "./AuthEditor";
 import BodyEditor from "./BodyEditor";
 import CapturesEditor from "./CapturesEditor";
 import KeyValueEditor from "./KeyValueEditor";
-import {
-  Payload,
-  RequestTab,
-  ResponseCapture,
-} from "../types/electron";
-import {
-  getBaseUrl,
-  buildQueryString,
-} from "../utils/url";
+import { Payload, RequestTab, ResponseCapture } from "../types/electron";
+import { getBaseUrl, buildQueryString } from "../utils/url";
 
 type RequestPanel = "params" | "headers" | "body" | "auth" | "captures";
 
@@ -56,13 +49,7 @@ const RequestPanelSection: React.FC<RequestPanelSectionProps> = ({
   <div className="request-section">
     <div className="tabs">
       {(
-        [
-          "params",
-          "headers",
-          "body",
-          "auth",
-          "captures",
-        ] as RequestPanel[]
+        ["params", "headers", "body", "auth", "captures"] as RequestPanel[]
       ).map((tab) => (
         <button
           key={tab}
@@ -73,15 +60,11 @@ const RequestPanelSection: React.FC<RequestPanelSectionProps> = ({
           {tab === "auth" && activeTab.auth.type !== "none" && (
             <span className="tab-badge">●</span>
           )}
-          {tab === "captures" &&
-            activeTab.captures.length > 0 && (
-              <span className="tab-badge">
-                {
-                  activeTab.captures.filter((c) => c.enabled)
-                    .length
-                }
-              </span>
-            )}
+          {tab === "captures" && activeTab.captures.length > 0 && (
+            <span className="tab-badge">
+              {activeTab.captures.filter((c) => c.enabled).length}
+            </span>
+          )}
         </button>
       ))}
     </div>

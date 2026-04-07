@@ -3,7 +3,9 @@ import { Reorder } from "motion/react";
 import EnvManager from "./components/EnvManager";
 import EnvironmentBar from "./components/EnvironmentBar";
 import FlowTabContent from "./components/FlowTabContent";
-import RequestPanelSection, { type RequestPanel } from "./components/RequestPanelSection";
+import RequestPanelSection, {
+  type RequestPanel,
+} from "./components/RequestPanelSection";
 import ResponsePanelComponent from "./components/ResponsePanel";
 import SavePickerModal from "./components/SavePickerModal";
 import Sidebar, { SidebarSection } from "./components/Sidebar";
@@ -22,9 +24,7 @@ import { useSendRequest } from "./hooks/useSendRequest";
 import { useSession } from "./hooks/useSession";
 import { useSidebarResize } from "./hooks/useSidebarResize";
 import { useTabs } from "./hooks/useTabs";
-import {
-  parseQueryParams,
-} from "./utils/url";
+import { parseQueryParams } from "./utils/url";
 
 type ResponsePanel = "body" | "headers";
 
@@ -435,7 +435,9 @@ const App: React.FC = () => {
                   savedRequestId={activeTab.savedRequestId}
                   envVariables={activeEnv?.variables ?? []}
                   envName={activeEnv?.name}
-                  onMethodChange={(method) => updateTab(activeTab.id, { method })}
+                  onMethodChange={(method) =>
+                    updateTab(activeTab.id, { method })
+                  }
                   onUrlChange={(v) => {
                     const parsed = parseQueryParams(v);
                     const params =

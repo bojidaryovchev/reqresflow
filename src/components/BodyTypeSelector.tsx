@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  BodyType,
-  Payload,
-  RawLanguage,
-  RequestTab,
-} from "../types/electron";
+import { BodyType, Payload, RawLanguage, RequestTab } from "../types/electron";
 
 interface BodyTypeSelectorProps {
   bodyType: BodyType;
@@ -62,9 +57,7 @@ const BodyTypeSelector: React.FC<BodyTypeSelectorProps> = ({
           onUpdateTab({
             rawLanguage: lang,
             payloads: payloads.map((p) =>
-              p.id === activePayloadId
-                ? { ...p, rawLanguage: lang }
-                : p,
+              p.id === activePayloadId ? { ...p, rawLanguage: lang } : p,
             ),
           });
         }}

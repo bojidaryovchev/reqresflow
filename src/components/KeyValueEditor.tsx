@@ -1,6 +1,9 @@
 import React, { useMemo } from "react";
 import KeyValueRow from "./KeyValueRow";
-import { HTTP_HEADER_NAMES, HEADER_VALUE_SUGGESTIONS } from "../utils/http-headers";
+import {
+  HTTP_HEADER_NAMES,
+  HEADER_VALUE_SUGGESTIONS,
+} from "../utils/http-headers";
 
 export interface KeyValuePair {
   enabled: boolean;

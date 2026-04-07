@@ -15,10 +15,7 @@ const RequestPickerModal: React.FC<RequestPickerModalProps> = ({
 }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="flow-request-picker"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flow-request-picker" onClick={(e) => e.stopPropagation()}>
         <div className="flow-request-picker-header">
           <span>Add Request from Collection</span>
           <button onClick={onClose}>×</button>

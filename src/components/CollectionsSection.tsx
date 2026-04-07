@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Collection,
-  SavedRequest,
-} from "../types/electron";
+import { Collection, SavedRequest } from "../types/electron";
 import CollectionRequestItem from "./CollectionRequestItem";
 
 interface RenameState {
@@ -129,10 +126,7 @@ const CollectionsSection: React.FC<CollectionsSectionProps> = ({
           {expandedCollections.has(collection.id) && (
             <div className="collection-requests">
               {collection.requests.length === 0 && (
-                <div
-                  className="sidebar-empty"
-                  style={{ padding: "8px 16px" }}
-                >
+                <div className="sidebar-empty" style={{ padding: "8px 16px" }}>
                   Empty collection
                 </div>
               )}
@@ -142,7 +136,10 @@ const CollectionsSection: React.FC<CollectionsSectionProps> = ({
                     key={req.id}
                     req={req}
                     collectionId={collection.id}
-                    isActive={activeCollectionId === collection.id && activeRequestId === req.id}
+                    isActive={
+                      activeCollectionId === collection.id &&
+                      activeRequestId === req.id
+                    }
                     editingId={editingId}
                     editingName={editingName}
                     setEditingName={setEditingName}

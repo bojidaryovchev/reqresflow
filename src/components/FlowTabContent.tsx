@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  Flow,
-  FlowRunState,
-  FlowTab,
-  Collection,
-} from "../types/electron";
+import { Flow, FlowRunState, FlowTab, Collection } from "../types/electron";
 import FlowEditor from "./FlowEditor";
 import FlowRunner from "./FlowRunner";
 
@@ -62,9 +57,7 @@ const FlowTabContent: React.FC<FlowTabContentProps> = ({
         onClose={() => {
           setFlowTabs((prev) =>
             prev.map((ft) =>
-              ft.id === activeFlowTab.id
-                ? { ...ft, mode: "editor" }
-                : ft,
+              ft.id === activeFlowTab.id ? { ...ft, mode: "editor" } : ft,
             ),
           );
           setFlowRunState(null);

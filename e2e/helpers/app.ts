@@ -19,9 +19,7 @@ let tempDataDir: string;
  * The fresh app starts with no tabs (empty state), so most test suites
  * need this. Pass `{ createTab: false }` to skip tab creation.
  */
-export async function launchApp(
-  options?: { createTab?: boolean },
-): Promise<{
+export async function launchApp(options?: { createTab?: boolean }): Promise<{
   app: ElectronApplication;
   page: Page;
 }> {

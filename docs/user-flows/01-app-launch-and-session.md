@@ -26,6 +26,7 @@
    - Switch environments
 
    ...the app silently saves your current state.
+
 3. If the app closes unexpectedly, you won't lose your work — it picks up where you left off.
 
 ## Updating From an Older Version

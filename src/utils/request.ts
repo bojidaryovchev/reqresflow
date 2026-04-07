@@ -1,6 +1,4 @@
-import type {
-  RequestTab,
-} from "../types/electron";
+import type { RequestTab } from "../types/electron";
 import { generateId } from "./helpers";
 
 export function createEmptyTab(): RequestTab {

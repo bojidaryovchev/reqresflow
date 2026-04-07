@@ -204,9 +204,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
               reqUrl={req?.url}
               collectionFound={!!col}
               onToggleExpand={() =>
-                setExpandedStepId(
-                  expandedStepId === step.id ? null : step.id,
-                )
+                setExpandedStepId(expandedStepId === step.id ? null : step.id)
               }
               onMoveStep={(dir) => moveStep(index, dir)}
               onRemove={() => removeStep(step.id)}

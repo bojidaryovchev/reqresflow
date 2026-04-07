@@ -35,15 +35,12 @@ const FlowStepResultItem: React.FC<FlowStepResultItemProps> = ({
     <span
       className={`${classPrefix}-step-method`}
       style={{
-        color:
-          METHOD_COLORS[result.requestMethod] || "var(--text-secondary)",
+        color: METHOD_COLORS[result.requestMethod] || "var(--text-secondary)",
       }}
     >
       {result.requestMethod}
     </span>
-    <span className={`${classPrefix}-step-name`}>
-      {result.requestName}
-    </span>
+    <span className={`${classPrefix}-step-name`}>{result.requestName}</span>
     {result.execution?.response && (
       <span
         className={`${classPrefix}-step-status status-${getStatusClass(result.execution.response.status)}`}
@@ -51,9 +48,7 @@ const FlowStepResultItem: React.FC<FlowStepResultItemProps> = ({
         {result.execution.response.status}
       </span>
     )}
-    <span className={`${classPrefix}-step-time`}>
-      {result.durationMs}ms
-    </span>
+    <span className={`${classPrefix}-step-time`}>{result.durationMs}ms</span>
   </div>
 );
 

@@ -636,10 +636,7 @@ test.describe("Undefined Variable Fallback", () => {
     const headerRows = page.locator(S.kvRow);
     const firstRow = headerRows.first();
     await firstRow.locator('input[type="text"]').first().fill("X-Undefined");
-    await firstRow
-      .locator('input[type="text"]')
-      .nth(1)
-      .fill("{{noExistVar}}");
+    await firstRow.locator('input[type="text"]').nth(1).fill("{{noExistVar}}");
 
     await sendRequest(page);
 

@@ -1,10 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  launchApp,
-  closeApp,
-  restartApp,
-  seedData,
-} from "../helpers/app";
+import { launchApp, closeApp, restartApp, seedData } from "../helpers/app";
 import { S } from "../helpers/selectors";
 import {
   clickSidebarTab,

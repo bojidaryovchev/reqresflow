@@ -7,9 +7,9 @@ import CodeEditor from "./CodeEditor";
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => {};
 
-const StepRequestContent: React.FC<{ execution: FlowRunStepResult["execution"] }> = ({
-  execution,
-}) => {
+const StepRequestContent: React.FC<{
+  execution: FlowRunStepResult["execution"];
+}> = ({ execution }) => {
   if (!execution) return null;
   const exec = execution;
 

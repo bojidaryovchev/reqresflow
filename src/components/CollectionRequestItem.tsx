@@ -13,7 +13,11 @@ interface CollectionRequestItemProps {
   startRename: RenameState["startRename"];
   commitRename: RenameState["commitRename"];
   handleRenameKeyDown: RenameState["handleRenameKeyDown"];
-  onLoadRequest: (req: SavedRequest, collectionId: string, requestId: string) => void;
+  onLoadRequest: (
+    req: SavedRequest,
+    collectionId: string,
+    requestId: string,
+  ) => void;
   onDeleteRequest: (collectionId: string, requestId: string) => void;
   onRunVariant: (
     req: SavedRequest,
@@ -91,8 +95,7 @@ const CollectionRequestItem: React.FC<CollectionRequestItemProps> = ({
           className="sidebar-icon-btn request-play-btn"
           onClick={(e) => {
             e.stopPropagation();
-            const payloadId =
-              req.activePayloadId || req.payloads?.[0]?.id;
+            const payloadId = req.activePayloadId || req.payloads?.[0]?.id;
             if (payloadId) {
               onRunVariant(req, collectionId, req.id, payloadId);
             }

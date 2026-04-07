@@ -49,7 +49,6 @@
 
 1. Click the **body** tab.
 2. Choose a body type by clicking one of the radio buttons:
-
    - **none** — no body will be sent (default for GET requests)
 
    - **raw** — type the body content directly
@@ -88,7 +87,6 @@
 
 1. Click the **auth** tab.
 2. Choose an auth type from the dropdown:
-
    - **No Auth** — no authentication (default)
 
    - **Bearer Token** — for APIs that use token-based auth

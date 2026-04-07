@@ -43,17 +43,12 @@ const CaptureRow: React.FC<CaptureRowProps> = ({
       <input
         className="capture-path-input"
         type="text"
-        placeholder={
-          capture.source === "body" ? "data.token" : "x-request-id"
-        }
+        placeholder={capture.source === "body" ? "data.token" : "x-request-id"}
         value={capture.path}
         onChange={(e) => onUpdate(capture.id, { path: e.target.value })}
       />
     )}
-    <button
-      className="capture-remove-btn"
-      onClick={() => onRemove(capture.id)}
-    >
+    <button className="capture-remove-btn" onClick={() => onRemove(capture.id)}>
       ×
     </button>
   </div>

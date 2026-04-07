@@ -17,9 +17,7 @@ const StepCaptureRow: React.FC<StepCaptureRowProps> = ({
       className="flow-step-capture-input"
       placeholder="Variable name"
       value={capture.varName}
-      onChange={(e) =>
-        onUpdate(capture.id, { varName: e.target.value })
-      }
+      onChange={(e) => onUpdate(capture.id, { varName: e.target.value })}
     />
     <select
       className="flow-step-capture-select"
@@ -44,9 +42,7 @@ const StepCaptureRow: React.FC<StepCaptureRowProps> = ({
             : ""
       }
       value={capture.path}
-      onChange={(e) =>
-        onUpdate(capture.id, { path: e.target.value })
-      }
+      onChange={(e) => onUpdate(capture.id, { path: e.target.value })}
       disabled={capture.source === "status"}
     />
     <button

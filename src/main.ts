@@ -94,7 +94,11 @@ ipcMain.handle("history:load", () => {
 
 ipcMain.handle("history:save", (_event, history: unknown) => {
   try {
-    fs.writeFileSync(getHistoryPath(), JSON.stringify(history, null, 2), "utf-8");
+    fs.writeFileSync(
+      getHistoryPath(),
+      JSON.stringify(history, null, 2),
+      "utf-8",
+    );
   } catch (err) {
     console.error("Failed to save history:", err);
   }
@@ -164,7 +168,10 @@ ipcMain.handle(
         headers: { ...config.headers },
       };
 
-      if (config.body && ["POST", "PUT", "PATCH", "DELETE"].includes(config.method)) {
+      if (
+        config.body &&
+        ["POST", "PUT", "PATCH", "DELETE"].includes(config.method)
+      ) {
         // For binary body type, read the file from disk
         if (config.bodyType === "binary" && config.body) {
           if (fs.existsSync(config.body)) {

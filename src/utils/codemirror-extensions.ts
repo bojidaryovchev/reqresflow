@@ -179,9 +179,7 @@ export const envVarHighlightPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
-export function envVarCompletion(
-  variables: { key: string; value: string }[],
-) {
+export function envVarCompletion(variables: { key: string; value: string }[]) {
   return (context: CompletionContext) => {
     const before = context.matchBefore(/\{\{\w*/);
     if (!before) return null;

@@ -21,11 +21,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   duplicateLabel = "Duplicate Request",
   menuRef,
 }) => (
-  <div
-    ref={menuRef}
-    className="tab-context-menu"
-    style={{ top: y, left: x }}
-  >
+  <div ref={menuRef} className="tab-context-menu" style={{ top: y, left: x }}>
     <button
       onClick={() => {
         onDuplicate();

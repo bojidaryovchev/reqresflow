@@ -21,7 +21,7 @@ Captures let you grab values from a response and save them as variables. This is
 5. Select "raw" and pick "JSON" from the language dropdown.
 6. Type:
    ```json
-   {"username": "admin", "password": "secret"}
+   { "username": "admin", "password": "secret" }
    ```
 7. Go to the **captures** tab.
 8. Click **+ Add Capture**.
@@ -34,7 +34,7 @@ Captures let you grab values from a response and save them as variables. This is
 1. Click **Send**.
 2. The response comes back, for example:
    ```json
-   {"data": {"token": "abc123", "user": {"id": "42"}}}
+   { "data": { "token": "abc123", "user": { "id": "42" } } }
    ```
 3. The captures automatically extract the values:
    - `token` is set to `abc123` in your Dev environment

@@ -17,7 +17,10 @@ interface FlowStepRowProps {
   onRemove: () => void;
   onToggleContinueOnError: () => void;
   onAddCapture: () => void;
-  onUpdateCapture: (captureId: string, updates: Partial<ResponseCapture>) => void;
+  onUpdateCapture: (
+    captureId: string,
+    updates: Partial<ResponseCapture>,
+  ) => void;
   onRemoveCapture: (captureId: string) => void;
 }
 
@@ -111,10 +114,7 @@ const FlowStepRow: React.FC<FlowStepRowProps> = ({
           <div className="flow-step-captures">
             <div className="flow-step-captures-header">
               <span>Step Captures</span>
-              <button
-                className="flow-step-captures-add"
-                onClick={onAddCapture}
-              >
+              <button className="flow-step-captures-add" onClick={onAddCapture}>
                 + Capture
               </button>
             </div>
@@ -136,9 +136,7 @@ const FlowStepRow: React.FC<FlowStepRowProps> = ({
         </div>
       )}
 
-      {index < totalSteps - 1 && (
-        <div className="flow-step-connector">↓</div>
-      )}
+      {index < totalSteps - 1 && <div className="flow-step-connector">↓</div>}
     </div>
   );
 };

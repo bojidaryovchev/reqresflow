@@ -1,9 +1,9 @@
 import React from "react";
 import { FlowRunStepResult } from "../types/electron";
 
-const StepCapturesContent: React.FC<{ execution: FlowRunStepResult["execution"] }> = ({
-  execution,
-}) => {
+const StepCapturesContent: React.FC<{
+  execution: FlowRunStepResult["execution"];
+}> = ({ execution }) => {
   if (!execution) return null;
   const exec = execution;
 

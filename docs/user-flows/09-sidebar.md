@@ -28,7 +28,7 @@ The sidebar is the panel on the left side of the app. It has three sections you 
 - Each request shows: the HTTP method in color, the request name, and buttons to rename, delete, and run (**▶**).
 - Requests with multiple payload variants show an expandable sub-list.
 - The request you're currently working on is highlighted.
-- If you have no collections: *"No collections yet. Click + to create one."*
+- If you have no collections: _"No collections yet. Click + to create one."_
 
 ## History Section
 
@@ -37,7 +37,7 @@ The sidebar is the panel on the left side of the app. It has three sections you 
 - Entries from flows show a badge with the flow name.
 - Click an entry to reopen it in a tab.
 - Clear all history with the **×** button.
-- If history is empty: *"No request history yet. Send a request to see it here."*
+- If history is empty: _"No request history yet. Send a request to see it here."_
 
 ## Flows Section
 
@@ -47,7 +47,7 @@ The sidebar is the panel on the left side of the app. It has three sections you 
 - Each flow has buttons to: rename (**✎**), run (**▶**), delete (**×**).
 - Double-click a flow name to rename it inline.
 - The flow you're currently editing is highlighted.
-- If you have no flows: *"No flows yet. Click + to create one."*
+- If you have no flows: _"No flows yet. Click + to create one."_
 
 ## Quick-Run a Request from the Sidebar
 

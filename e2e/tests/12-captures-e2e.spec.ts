@@ -28,10 +28,7 @@ test.afterAll(async () => {
   await closeApp();
 });
 
-async function createAndSelectEnv(
-  p: Page,
-  envName: string,
-): Promise<void> {
+async function createAndSelectEnv(p: Page, envName: string): Promise<void> {
   await p.click(S.envManageBtn);
   await expect(p.locator(S.modal)).toBeVisible();
   const addBtn = p.locator(`${S.envList} ${S.sidebarIconBtn}`);
@@ -43,10 +40,7 @@ async function createAndSelectEnv(
   await p.locator(S.envSelect).selectOption({ label: envName });
 }
 
-async function findEnvVar(
-  p: Page,
-  varName: string,
-): Promise<string | null> {
+async function findEnvVar(p: Page, varName: string): Promise<string | null> {
   await p.click(S.envManageBtn);
   await expect(p.locator(S.modal)).toBeVisible();
   const varRows = p.locator(S.envVarRow);
@@ -194,9 +188,7 @@ test.describe("Captures End-to-End", () => {
     await newRow.locator(S.captureSourceSelect).selectOption("status");
 
     await clickRequestTab(page, "Params"); // switch away
-    const capturesTab = page.locator(
-      `${S.requestTab}:has-text("captures")`,
-    );
+    const capturesTab = page.locator(`${S.requestTab}:has-text("captures")`);
     const badge = capturesTab.locator(S.tabBadge);
     await expect(badge).toBeVisible();
     const text = await badge.textContent();
@@ -233,9 +225,7 @@ test.describe("Capture Edge Cases", () => {
     const nameInput = edgePage.locator(S.envNameInput);
     await nameInput.fill("CaptureEdge");
     await edgePage.click(S.modalCloseBtn);
-    await edgePage
-      .locator(S.envSelect)
-      .selectOption({ label: "CaptureEdge" });
+    await edgePage.locator(S.envSelect).selectOption({ label: "CaptureEdge" });
   });
 
   test("capture with invalid JSON path stores empty string", async () => {

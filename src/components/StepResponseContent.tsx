@@ -7,9 +7,9 @@ import CodeEditor from "./CodeEditor";
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => {};
 
-const StepResponseContent: React.FC<{ execution: FlowRunStepResult["execution"] }> = ({
-  execution,
-}) => {
+const StepResponseContent: React.FC<{
+  execution: FlowRunStepResult["execution"];
+}> = ({ execution }) => {
   if (!execution) return null;
   const exec = execution;
   const responseBody = exec.response?.body || "";
@@ -19,9 +19,7 @@ const StepResponseContent: React.FC<{ execution: FlowRunStepResult["execution"] 
 
   return (
     <div className="flow-runner-detail-content">
-      {exec.error && (
-        <div className="flow-runner-error-box">{exec.error}</div>
-      )}
+      {exec.error && <div className="flow-runner-error-box">{exec.error}</div>}
       {exec.response && (
         <>
           <div className="flow-runner-response-meta">

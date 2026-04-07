@@ -25,10 +25,11 @@ export function extractCaptures(
   result: ResponseData,
   captures: ResponseCapture[],
   vars: { key: string; value: string }[],
-): { capturedValues: CapturedValue[]; updatedVars: { key: string; value: string }[] } {
-  const enabledCaptures = captures.filter(
-    (c) => c.enabled && c.varName.trim(),
-  );
+): {
+  capturedValues: CapturedValue[];
+  updatedVars: { key: string; value: string }[];
+} {
+  const enabledCaptures = captures.filter((c) => c.enabled && c.varName.trim());
   if (enabledCaptures.length === 0) {
     return { capturedValues: [], updatedVars: vars };
   }
@@ -61,9 +62,7 @@ export function extractCaptures(
       path: cap.path,
     });
 
-    const existing = updatedVars.findIndex(
-      (v) => v.key === cap.varName.trim(),
-    );
+    const existing = updatedVars.findIndex((v) => v.key === cap.varName.trim());
     if (existing >= 0) {
       updatedVars[existing] = { ...updatedVars[existing], value };
     } else {

@@ -4,7 +4,11 @@ import { Environment } from "../types/electron";
 interface EnvDetailPanelProps {
   selectedEnv: Environment | null;
   onUpdateName: (id: string, name: string) => void;
-  onUpdateVariable: (index: number, field: "key" | "value", val: string) => void;
+  onUpdateVariable: (
+    index: number,
+    field: "key" | "value",
+    val: string,
+  ) => void;
   onRemoveVariable: (index: number) => void;
   onAddVariable: () => void;
 }
@@ -74,9 +78,7 @@ const EnvDetailPanel: React.FC<EnvDetailPanelProps> = ({
         </button>
       </>
     ) : (
-      <div className="env-detail-empty">
-        Select or create an environment
-      </div>
+      <div className="env-detail-empty">Select or create an environment</div>
     )}
   </div>
 );

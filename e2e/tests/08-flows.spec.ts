@@ -242,9 +242,7 @@ test.describe("Flow Advanced Features", () => {
       .textContent();
 
     await advPage
-      .locator(
-        `${S.flowStep}:first-child ${S.flowStepMove}[title="Move down"]`,
-      )
+      .locator(`${S.flowStep}:first-child ${S.flowStepMove}[title="Move down"]`)
       .click();
 
     const newFirstName = await advPage
@@ -316,9 +314,7 @@ test.describe("Flow Advanced Features", () => {
     );
     await expect(captureRow).toHaveCount(1);
     await expect(
-      advPage.locator(
-        `${S.flowStep}:first-child ${S.flowStepCapturesEmpty}`,
-      ),
+      advPage.locator(`${S.flowStep}:first-child ${S.flowStepCapturesEmpty}`),
     ).toBeHidden();
   });
 
@@ -342,9 +338,7 @@ test.describe("Flow Advanced Features", () => {
       .locator(`${S.flowStep}:first-child ${S.flowStepCapturesAdd}`)
       .click();
     await expect(
-      advPage.locator(
-        `${S.flowStep}:first-child ${S.flowStepCaptureRow}`,
-      ),
+      advPage.locator(`${S.flowStep}:first-child ${S.flowStepCaptureRow}`),
     ).toHaveCount(2);
 
     await advPage
@@ -352,9 +346,7 @@ test.describe("Flow Advanced Features", () => {
       .last()
       .click();
     await expect(
-      advPage.locator(
-        `${S.flowStep}:first-child ${S.flowStepCaptureRow}`,
-      ),
+      advPage.locator(`${S.flowStep}:first-child ${S.flowStepCaptureRow}`),
     ).toHaveCount(1);
   });
 
@@ -371,9 +363,7 @@ test.describe("Flow Advanced Features", () => {
     await advPage.click(
       `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Save")`,
     );
-    await advPage.click(
-      `${S.flowEditorActions} ${S.flowEditorBtnPrimary}`,
-    );
+    await advPage.click(`${S.flowEditorActions} ${S.flowEditorBtnPrimary}`);
 
     await expect(advPage.locator(S.flowRunner)).toBeVisible({
       timeout: 10_000,
@@ -552,9 +542,7 @@ test.describe("Flow Tab Management", () => {
     expect(after).toBe(before + 1);
 
     // Middle-click on the last tab
-    const lastTab = tabPage
-      .locator(`.request-tabs-list ${S.tabItem}`)
-      .last();
+    const lastTab = tabPage.locator(`.request-tabs-list ${S.tabItem}`).last();
     await lastTab.click({ button: "middle" });
 
     const final = await tabPage
@@ -581,9 +569,7 @@ test.describe("Flow Rename (sidebar)", () => {
 
   test("create a flow and rename via sidebar rename button", async () => {
     await clickSidebarTab(renamePage, "Flows");
-    const addBtn = renamePage.locator(
-      `${S.sidebarHeader} ${S.sidebarAddBtn}`,
-    );
+    const addBtn = renamePage.locator(`${S.sidebarHeader} ${S.sidebarAddBtn}`);
     await addBtn.click();
 
     const nameInput = renamePage.locator(S.flowEditorName);
@@ -605,8 +591,7 @@ test.describe("Flow Rename (sidebar)", () => {
     // Make hover-only actions visible
     await renamePage.evaluate(() => {
       const style = document.createElement("style");
-      style.textContent =
-        ".collection-actions { display: flex !important; }";
+      style.textContent = ".collection-actions { display: flex !important; }";
       document.head.appendChild(style);
     });
 
@@ -615,9 +600,7 @@ test.describe("Flow Rename (sidebar)", () => {
     );
     await renameBtn.click();
 
-    const renameInput = renamePage.locator(
-      `${S.flowItem} ${S.renameInput}`,
-    );
+    const renameInput = renamePage.locator(`${S.flowItem} ${S.renameInput}`);
     await expect(renameInput).toBeVisible();
 
     await renameInput.fill("Renamed Flow");
@@ -634,18 +617,14 @@ test.describe("Flow Rename (sidebar)", () => {
     );
     await flowName.dblclick();
 
-    const renameInput = renamePage.locator(
-      `${S.flowItem} ${S.renameInput}`,
-    );
+    const renameInput = renamePage.locator(`${S.flowItem} ${S.renameInput}`);
     await expect(renameInput).toBeVisible();
 
     await renameInput.fill("Double-Click Renamed");
     await renameInput.press("Enter");
 
     await expect(
-      renamePage.locator(
-        `${S.flowItemName}:has-text("Double-Click Renamed")`,
-      ),
+      renamePage.locator(`${S.flowItemName}:has-text("Double-Click Renamed")`),
     ).toBeVisible();
   });
 
@@ -717,9 +696,7 @@ test.describe("Flow Abort", () => {
     await flowItem.locator(S.flowItemHeader).click();
     await expect(abortPage.locator(S.flowEditor)).toBeVisible();
 
-    await abortPage.click(
-      `${S.flowEditorActions} ${S.flowEditorBtnPrimary}`,
-    );
+    await abortPage.click(`${S.flowEditorActions} ${S.flowEditorBtnPrimary}`);
     await expect(abortPage.locator(S.flowRunner)).toBeVisible({
       timeout: 10_000,
     });

@@ -64,11 +64,7 @@ const FlowItem: React.FC<FlowItemProps> = ({
       >
         ✎
       </button>
-      <button
-        className="sidebar-icon-btn"
-        onClick={onRun}
-        title="Run flow"
-      >
+      <button className="sidebar-icon-btn" onClick={onRun} title="Run flow">
         ▶
       </button>
       <button

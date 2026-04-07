@@ -169,9 +169,7 @@ test.describe("POST with GraphQL Body", () => {
   });
 
   test("type GraphQL query and send request", async () => {
-    const queryCm = page
-      .locator(`${S.graphqlSection} .cm-content`)
-      .first();
+    const queryCm = page.locator(`${S.graphqlSection} .cm-content`).first();
     await queryCm.click();
     await page.keyboard.type("{ users { id name } }");
 
@@ -319,7 +317,10 @@ test.describe("URL Query String Edge Cases", () => {
     const kvRows = page.locator(`${S.requestSection} ${S.kvRow}`);
     const firstRow = kvRows.first();
     await firstRow.locator('input[type="text"]').first().fill("q");
-    await firstRow.locator('input[type="text"]').nth(1).fill("hello world&foo=bar");
+    await firstRow
+      .locator('input[type="text"]')
+      .nth(1)
+      .fill("hello world&foo=bar");
 
     await sendRequest(page);
 

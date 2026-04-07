@@ -1,8 +1,4 @@
-import type {
-  AuthConfig,
-  BodyType,
-  Payload,
-} from "../types/electron";
+import type { AuthConfig, BodyType, Payload } from "../types/electron";
 import { getBaseUrl } from "./url";
 import { substituteVars } from "./http";
 
@@ -38,7 +34,17 @@ export function buildRequestConfig(input: {
   headers: Record<string, string>;
   body: string | undefined;
 } {
-  const { method, params, headers, auth, bodyType, rawLanguage, rawBody, payload, vars } = input;
+  const {
+    method,
+    params,
+    headers,
+    auth,
+    bodyType,
+    rawLanguage,
+    rawBody,
+    payload,
+    vars,
+  } = input;
 
   // Build URL
   const baseUrl = substituteVars(getBaseUrl(input.url.trim()), vars);

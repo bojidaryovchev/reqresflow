@@ -57,7 +57,7 @@ test.describe("History", () => {
     await expect(timestampEl).toBeVisible();
     const text = await timestampEl.textContent();
     // Timestamp should have some content (time or date)
-    expect((text ?? '').trim().length).toBeGreaterThan(0);
+    expect((text ?? "").trim().length).toBeGreaterThan(0);
   });
 
   test("history badge shows count", async () => {

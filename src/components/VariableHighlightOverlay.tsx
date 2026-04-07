@@ -2,7 +2,10 @@ import React, { useCallback, useRef } from "react";
 
 interface VariableHighlightOverlayProps {
   parts: { text: string; isVar: boolean }[];
-  onVarMouseEnter: (e: React.MouseEvent<HTMLSpanElement>, varName: string) => void;
+  onVarMouseEnter: (
+    e: React.MouseEvent<HTMLSpanElement>,
+    varName: string,
+  ) => void;
   onVarMouseLeave: () => void;
   highlightRef: React.RefObject<HTMLDivElement | null>;
 }
