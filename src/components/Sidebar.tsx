@@ -5,6 +5,10 @@ import {
   SavedRequest,
   HistoryEntry,
 } from "../types/electron";
+import { generateId } from "../utils/helpers";
+import CollectionsSection from "./CollectionsSection";
+import HistorySection from "./HistorySection";
+import FlowsSection from "./FlowsSection";
 
 interface SidebarProps {
   collections: Collection[];
@@ -48,18 +52,6 @@ interface SidebarProps {
 export type { SidebarSection };
 
 type SidebarSection = "collections" | "history" | "flows";
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-const METHOD_COLORS: Record<string, string> = {
-  GET: "var(--method-get)",
-  POST: "var(--method-post)",
-  PUT: "var(--method-put)",
-  PATCH: "var(--method-patch)",
-  DELETE: "var(--method-delete)",
-};
 
 const Sidebar: React.FC<SidebarProps> = ({
   collections,
@@ -196,16 +188,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (e.key === "Escape") setEditingId(null);
   };
 
-  const formatTimestamp = (ts: number): string => {
-    const d = new Date(ts);
-    const now = new Date();
-    const isToday = d.toDateString() === now.toDateString();
-    const time = d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    if (isToday) return time;
-    return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
+  const renameState = {
+    editingId,
+    editingName,
+    setEditingName,
+    startRename,
+    commitRename,
+    handleRenameKeyDown,
   };
 
   return (
@@ -238,388 +227,41 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {activeSection === "collections" && (
-        <>
-          <div className="sidebar-header">
-            <span className="sidebar-header-title">Collections</span>
-            <button
-              className="sidebar-add-btn"
-              onClick={addCollection}
-              title="New Collection"
-            >
-              +
-            </button>
-          </div>
-          <div className="sidebar-content">
-            {collections.length === 0 && (
-              <div className="sidebar-empty">
-                No collections yet.
-                <br />
-                Click + to create one.
-              </div>
-            )}
-            {collections.map((collection) => (
-              <div className="collection" key={collection.id}>
-                <div
-                  className="collection-header"
-                  onClick={() => toggleExpanded(collection.id)}
-                >
-                  <span className="collection-arrow">
-                    {expandedCollections.has(collection.id) ? "▼" : "▶"}
-                  </span>
-                  {editingId === collection.id ? (
-                    <input
-                      className="rename-input"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={handleRenameKeyDown}
-                      autoFocus
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <span className="collection-name">{collection.name}</span>
-                  )}
-                  <div
-                    className="collection-actions"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      className="sidebar-icon-btn"
-                      onClick={() => saveToCollection(collection.id)}
-                      title="Save current request here"
-                    >
-                      +
-                    </button>
-                    <button
-                      className="sidebar-icon-btn"
-                      onClick={() =>
-                        startRename(collection.id, collection.name)
-                      }
-                      title="Rename"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="sidebar-icon-btn danger"
-                      onClick={() => deleteCollection(collection.id)}
-                      title="Delete collection"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                {expandedCollections.has(collection.id) && (
-                  <div className="collection-requests">
-                    {collection.requests.length === 0 && (
-                      <div
-                        className="sidebar-empty"
-                        style={{ padding: "8px 16px" }}
-                      >
-                        Empty collection
-                      </div>
-                    )}
-                    {collection.requests.map((req) => {
-                      const hasVariants =
-                        req.payloads && req.payloads.length > 1;
-                      return (
-                        <div key={req.id}>
-                          <div
-                            className={`request-item${activeCollectionId === collection.id && activeRequestId === req.id ? " active" : ""}`}
-                            onClick={() =>
-                              onLoadRequest(req, collection.id, req.id)
-                            }
-                          >
-                            <span
-                              className="request-method-badge"
-                              style={{
-                                color:
-                                  METHOD_COLORS[req.method] ||
-                                  "var(--text-secondary)",
-                              }}
-                            >
-                              {req.method}
-                            </span>
-                            {editingId === req.id ? (
-                              <input
-                                className="rename-input"
-                                value={editingName}
-                                onChange={(e) => setEditingName(e.target.value)}
-                                onBlur={commitRename}
-                                onKeyDown={handleRenameKeyDown}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <span className="request-name">{req.name}</span>
-                            )}
-                            <div
-                              className="collection-actions"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                className="sidebar-icon-btn"
-                                onClick={() => startRename(req.id, req.name)}
-                                title="Rename"
-                              >
-                                ✎
-                              </button>
-                              <button
-                                className="sidebar-icon-btn danger"
-                                onClick={() =>
-                                  deleteRequest(collection.id, req.id)
-                                }
-                                title="Delete request"
-                              >
-                                ×
-                              </button>
-                            </div>
-                            <button
-                              className="sidebar-icon-btn request-play-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const payloadId =
-                                  req.activePayloadId || req.payloads?.[0]?.id;
-                                if (payloadId) {
-                                  onRunVariant(
-                                    req,
-                                    collection.id,
-                                    req.id,
-                                    payloadId,
-                                  );
-                                }
-                              }}
-                              title="Send request"
-                            >
-                              ▶
-                            </button>
-                          </div>
-                          {hasVariants && (
-                            <div className="request-variants">
-                              {req.payloads?.map((payload) => (
-                                <div
-                                  className="request-variant-item"
-                                  key={payload.id}
-                                  onClick={() => {
-                                    onLoadRequest(
-                                      { ...req, activePayloadId: payload.id },
-                                      collection.id,
-                                      req.id,
-                                    );
-                                    onRequestPanelChange("body");
-                                  }}
-                                >
-                                  {editingId === payload.id ? (
-                                    <input
-                                      className="rename-input"
-                                      value={editingName}
-                                      onChange={(e) =>
-                                        setEditingName(e.target.value)
-                                      }
-                                      onBlur={commitRename}
-                                      onKeyDown={handleRenameKeyDown}
-                                      autoFocus
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  ) : (
-                                    <span
-                                      className="request-variant-name"
-                                      onDoubleClick={(e) => {
-                                        e.stopPropagation();
-                                        startRename(payload.id, payload.name);
-                                      }}
-                                    >
-                                      {payload.name}
-                                    </span>
-                                  )}
-                                  <div
-                                    className="collection-actions"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <button
-                                      className="sidebar-icon-btn"
-                                      onClick={() =>
-                                        startRename(payload.id, payload.name)
-                                      }
-                                      title="Rename payload"
-                                    >
-                                      ✎
-                                    </button>
-                                  </div>
-                                  <button
-                                    className="sidebar-icon-btn request-variant-play"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onRunVariant(
-                                        req,
-                                        collection.id,
-                                        req.id,
-                                        payload.id,
-                                      );
-                                    }}
-                                    title={`Send with ${payload.name}`}
-                                  >
-                                    ▶
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
+        <CollectionsSection
+          {...renameState}
+          collections={collections}
+          expandedCollections={expandedCollections}
+          activeCollectionId={activeCollectionId}
+          activeRequestId={activeRequestId}
+          onToggleExpanded={toggleExpanded}
+          onAddCollection={addCollection}
+          onSaveToCollection={saveToCollection}
+          onDeleteCollection={deleteCollection}
+          onDeleteRequest={deleteRequest}
+          onLoadRequest={onLoadRequest}
+          onRunVariant={onRunVariant}
+          onRequestPanelChange={onRequestPanelChange}
+        />
       )}
 
       {activeSection === "history" && (
-        <>
-          <div className="sidebar-header">
-            <span className="sidebar-header-title">History</span>
-            {history.length > 0 && (
-              <button
-                className="sidebar-add-btn"
-                onClick={onClearHistory}
-                title="Clear History"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <div className="sidebar-content">
-            {history.length === 0 && (
-              <div className="sidebar-empty">
-                No request history yet.
-                <br />
-                Send a request to see it here.
-              </div>
-            )}
-            {history.map((entry) => (
-              <div
-                className="history-item"
-                key={entry.id}
-                onClick={() => onLoadHistory(entry)}
-              >
-                <div className="history-item-top">
-                  <span
-                    className="request-method-badge"
-                    style={{
-                      color:
-                        METHOD_COLORS[entry.method] || "var(--text-secondary)",
-                    }}
-                  >
-                    {entry.method}
-                  </span>
-                  <span
-                    className={`history-status ${entry.status >= 200 && entry.status < 300 ? "success" : entry.status >= 400 ? "error" : ""}`}
-                  >
-                    {entry.status}
-                  </span>
-                  <span className="history-time">{entry.time}ms</span>
-                </div>
-                <div className="history-item-url">{entry.url}</div>
-                <div className="history-item-timestamp">
-                  {entry.flowName && (
-                    <span className="history-flow-badge">{entry.flowName}</span>
-                  )}
-                  {formatTimestamp(entry.timestamp)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <HistorySection
+          history={history}
+          onLoadHistory={onLoadHistory}
+          onClearHistory={onClearHistory}
+        />
       )}
 
       {activeSection === "flows" && (
-        <>
-          <div className="sidebar-header">
-            <span className="sidebar-header-title">Flows</span>
-            <button
-              className="sidebar-add-btn"
-              onClick={onCreateFlow}
-              title="New Flow"
-            >
-              +
-            </button>
-          </div>
-          <div className="sidebar-content">
-            {flows.length === 0 && (
-              <div className="sidebar-empty">
-                No flows yet.
-                <br />
-                Click + to create one.
-              </div>
-            )}
-            {flows.map((flow) => (
-              <div
-                className={`flow-item${activeFlowId === flow.id ? " active" : ""}`}
-                key={flow.id}
-              >
-                <div
-                  className="flow-item-header"
-                  onClick={() => onEditFlow(flow)}
-                >
-                  {editingId === flow.id ? (
-                    <input
-                      className="rename-input"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={handleRenameKeyDown}
-                      autoFocus
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <span
-                      className="flow-item-name"
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        startRename(flow.id, flow.name);
-                      }}
-                    >
-                      {flow.name}
-                    </span>
-                  )}
-                  <span className="flow-item-steps">
-                    {flow.steps.length} step
-                    {flow.steps.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div
-                  className="collection-actions"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    className="sidebar-icon-btn"
-                    onClick={() => startRename(flow.id, flow.name)}
-                    title="Rename flow"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="sidebar-icon-btn"
-                    onClick={() => onRunFlow(flow)}
-                    title="Run flow"
-                  >
-                    ▶
-                  </button>
-                  <button
-                    className="sidebar-icon-btn danger"
-                    onClick={() =>
-                      onFlowsChange(flows.filter((f) => f.id !== flow.id))
-                    }
-                    title="Delete flow"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <FlowsSection
+          {...renameState}
+          flows={flows}
+          activeFlowId={activeFlowId}
+          onCreateFlow={onCreateFlow}
+          onEditFlow={onEditFlow}
+          onRunFlow={onRunFlow}
+          onDeleteFlow={(id) => onFlowsChange(flows.filter((f) => f.id !== id))}
+        />
       )}
     </div>
   );

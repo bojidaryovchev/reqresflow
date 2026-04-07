@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import {
   FlowRunState,
   FlowRunStepResult,
-  RawLanguage,
 } from "../types/electron";
+import { formatSize, getStatusClass, tryPrettyJson } from "../utils/helpers";
+import { METHOD_COLORS, detectResponseLanguage } from "../utils/http";
 import CodeEditor from "./CodeEditor";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -13,53 +14,6 @@ interface FlowRunnerProps {
   runState: FlowRunState;
   onClose: () => void;
   onAbort: () => void;
-}
-
-const METHOD_COLORS: Record<string, string> = {
-  GET: "var(--method-get)",
-  POST: "var(--method-post)",
-  PUT: "var(--method-put)",
-  PATCH: "var(--method-patch)",
-  DELETE: "var(--method-delete)",
-};
-
-function getStatusClass(status: number): string {
-  if (status >= 200 && status < 300) return "success";
-  if (status >= 300 && status < 400) return "redirect";
-  if (status >= 400 && status < 500) return "client-error";
-  return "server-error";
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function tryPrettyJson(raw: string): string {
-  try {
-    return JSON.stringify(JSON.parse(raw), null, 2);
-  } catch {
-    return raw;
-  }
-}
-
-function detectLanguage(
-  headers: Record<string, string>,
-  body: string,
-): RawLanguage {
-  const ct = (
-    headers["content-type"] ||
-    headers["Content-Type"] ||
-    ""
-  ).toLowerCase();
-  if (ct.includes("json")) return "json";
-  if (ct.includes("xml")) return "xml";
-  if (ct.includes("html")) return "html";
-  const trimmed = body.trimStart();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
-  if (trimmed.startsWith("<?xml")) return "xml";
-  return "text";
 }
 
 type DetailTab = "response" | "request" | "captures";
@@ -74,7 +28,7 @@ const StepDetail: React.FC<{ result: FlowRunStepResult }> = ({ result }) => {
 
   const responseBody = exec.response?.body || "";
   const responseLang = exec.response
-    ? detectLanguage(exec.response.headers, exec.response.body)
+    ? detectResponseLanguage(exec.response)
     : "text";
 
   return (

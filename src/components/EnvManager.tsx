@@ -1,14 +1,11 @@
 import React, { useState } from "react";
 import { Environment } from "../types/electron";
+import { generateId } from "../utils/helpers";
 
 interface EnvManagerProps {
   environments: Environment[];
   onEnvironmentsChange: (environments: Environment[]) => void;
   onClose: () => void;
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 const EnvManager: React.FC<EnvManagerProps> = ({
