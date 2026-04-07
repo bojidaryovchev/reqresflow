@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { RequestTab as RequestTabType } from "../types/electron";
 import { generateId } from "../utils/helpers";
-import { REQUEST_FIELDS, createEmptyTab } from "../utils/request";
+import { REQUEST_FIELDS } from "../utils/request-builder";
+import { createEmptyTab } from "../utils/request";
 
 export function useTabs() {
   const [tabs, setTabs] = useState<RequestTabType[]>([]);

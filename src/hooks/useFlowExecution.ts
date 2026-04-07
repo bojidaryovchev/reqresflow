@@ -9,7 +9,7 @@ import {
   SavedRequest,
 } from "../types/electron";
 import { generateId } from "../utils/helpers";
-import { executeRequest } from "../utils/request";
+import { executeRequest } from "../utils/request-execution";
 
 interface UseFlowExecutionDeps {
   collections: Collection[];

@@ -31,7 +31,7 @@ import {
   parseQueryParams,
   getBaseUrl,
   buildQueryString,
-} from "./utils/request";
+} from "./utils/url";
 
 type RequestPanel = "params" | "headers" | "body" | "auth" | "captures";
 type ResponsePanel = "body" | "headers";

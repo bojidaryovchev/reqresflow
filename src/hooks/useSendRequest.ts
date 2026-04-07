@@ -10,7 +10,8 @@ import {
   SavedRequest,
 } from "../types/electron";
 import { generateId } from "../utils/helpers";
-import { buildRequestConfig, resolvePath } from "../utils/request";
+import { buildRequestConfig } from "../utils/request-builder";
+import { extractCaptures } from "../utils/captures";
 
 interface ResponseData {
   status: number;
@@ -67,32 +68,8 @@ export function useSendRequest({
 
       const updatedEnvs = environments.map((env) => {
         if (env.id !== activeEnvId) return env;
-        const vars = [...env.variables];
-        for (const cap of enabledCaptures) {
-          let value = "";
-          if (cap.source === "status") {
-            value = String(result.status);
-          } else if (cap.source === "header") {
-            const headerKey = Object.keys(result.headers).find(
-              (k) => k.toLowerCase() === cap.path.toLowerCase(),
-            );
-            value = headerKey ? result.headers[headerKey] : "";
-          } else {
-            try {
-              const parsed = JSON.parse(result.body);
-              value = resolvePath(parsed, cap.path);
-            } catch {
-              value = "";
-            }
-          }
-          const existing = vars.findIndex((v) => v.key === cap.varName.trim());
-          if (existing >= 0) {
-            vars[existing] = { ...vars[existing], value };
-          } else {
-            vars.push({ key: cap.varName.trim(), value });
-          }
-        }
-        return { ...env, variables: vars };
+        const { updatedVars } = extractCaptures(result, captures, env.variables);
+        return { ...env, variables: updatedVars };
       });
 
       setEnvironments(updatedEnvs);
