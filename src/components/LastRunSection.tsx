@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FlowRunState } from "../types/electron";
-import { getStatusClass } from "../utils/helpers";
-import { METHOD_COLORS } from "../utils/http";
+import FlowStepResultItem from "./FlowStepResultItem";
 import StepDetail from "./StepDetail";
 
 const LastRunSection: React.FC<{ runState: FlowRunState }> = ({ runState }) => {
@@ -59,49 +58,18 @@ const LastRunSection: React.FC<{ runState: FlowRunState }> = ({ runState }) => {
         <div className="flow-editor-last-run-body">
           <div className="flow-editor-last-run-steps">
             {runState.stepResults.map((result, index) => (
-              <div
-                className={`flow-editor-last-run-step ${result.status}${selectedStepIndex === index ? " selected" : ""}`}
+              <FlowStepResultItem
                 key={result.stepId}
+                result={result}
+                index={index}
+                isSelected={selectedStepIndex === index}
                 onClick={() =>
                   setSelectedStepIndex(
                     selectedStepIndex === index ? null : index,
                   )
                 }
-              >
-                <span className="flow-editor-last-run-step-icon">
-                  {result.status === "success"
-                    ? "✓"
-                    : result.status === "error"
-                      ? "✗"
-                      : "⏭"}
-                </span>
-                <span className="flow-editor-last-run-step-index">
-                  {index + 1}.
-                </span>
-                <span
-                  className="flow-editor-last-run-step-method"
-                  style={{
-                    color:
-                      METHOD_COLORS[result.requestMethod] ||
-                      "var(--text-secondary)",
-                  }}
-                >
-                  {result.requestMethod}
-                </span>
-                <span className="flow-editor-last-run-step-name">
-                  {result.requestName}
-                </span>
-                {result.execution?.response && (
-                  <span
-                    className={`flow-editor-last-run-step-status status-${getStatusClass(result.execution.response.status)}`}
-                  >
-                    {result.execution.response.status}
-                  </span>
-                )}
-                <span className="flow-editor-last-run-step-time">
-                  {result.durationMs}ms
-                </span>
-              </div>
+                classPrefix="flow-editor-last-run"
+              />
             ))}
           </div>
           <div className="flow-editor-last-run-detail">

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Environment } from "../types/electron";
 import { generateId } from "../utils/helpers";
+import EnvListPanel from "./EnvListPanel";
+import EnvDetailPanel from "./EnvDetailPanel";
 
 interface EnvManagerProps {
   environments: Environment[];
@@ -93,94 +95,20 @@ const EnvManager: React.FC<EnvManagerProps> = ({
           </button>
         </div>
         <div className="env-manager-body">
-          <div className="env-list">
-            <div className="env-list-header">
-              <span>Environments</span>
-              <button
-                className="sidebar-icon-btn"
-                onClick={addEnvironment}
-                title="Add environment"
-              >
-                +
-              </button>
-            </div>
-            {environments.map((env) => (
-              <div
-                key={env.id}
-                className={`env-list-item ${env.id === selectedEnvId ? "active" : ""}`}
-                onClick={() => setSelectedEnvId(env.id)}
-              >
-                <span>{env.name}</span>
-                <button
-                  className="sidebar-icon-btn danger"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteEnvironment(env.id);
-                  }}
-                  title="Delete"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="env-detail">
-            {selectedEnv ? (
-              <>
-                <div className="env-name-row">
-                  <label>Name:</label>
-                  <input
-                    type="text"
-                    value={selectedEnv.name}
-                    onChange={(e) =>
-                      updateEnvName(selectedEnv.id, e.target.value)
-                    }
-                    className="env-name-input"
-                  />
-                </div>
-                <div className="env-vars-header">
-                  <span>Variable</span>
-                  <span>Value</span>
-                  <span></span>
-                </div>
-                <div className="env-vars-list">
-                  {selectedEnv.variables.map((v, i) => (
-                    <div className="env-var-row" key={i}>
-                      <input
-                        type="text"
-                        placeholder="VARIABLE_NAME"
-                        value={v.key}
-                        onChange={(e) =>
-                          updateVariable(i, "key", e.target.value)
-                        }
-                      />
-                      <input
-                        type="text"
-                        placeholder="value"
-                        value={v.value}
-                        onChange={(e) =>
-                          updateVariable(i, "value", e.target.value)
-                        }
-                      />
-                      <button
-                        className="kv-remove-btn"
-                        onClick={() => removeVariable(i)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button className="kv-add-btn" onClick={addVariable}>
-                  + Add Variable
-                </button>
-              </>
-            ) : (
-              <div className="env-detail-empty">
-                Select or create an environment
-              </div>
-            )}
-          </div>
+          <EnvListPanel
+            environments={environments}
+            selectedEnvId={selectedEnvId}
+            onSelectEnv={setSelectedEnvId}
+            onAddEnvironment={addEnvironment}
+            onDeleteEnvironment={deleteEnvironment}
+          />
+          <EnvDetailPanel
+            selectedEnv={selectedEnv}
+            onUpdateName={updateEnvName}
+            onUpdateVariable={updateVariable}
+            onRemoveVariable={removeVariable}
+            onAddVariable={addVariable}
+          />
         </div>
       </div>
     </div>

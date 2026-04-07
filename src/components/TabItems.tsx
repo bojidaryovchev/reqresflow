@@ -4,28 +4,30 @@ import { type HttpMethod, METHOD_COLORS } from "../utils/http";
 import { getTabDisplayName } from "../utils/request";
 import { RequestTab as RequestTabType, FlowTab } from "../types/electron";
 
-interface TabItemProps {
-  tab: RequestTabType;
+interface BaseTabItemProps<T> {
+  tab: T;
   isActive: boolean;
   onActivate: () => void;
   onClose: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
+  children: React.ReactNode;
 }
 
-export function TabItem({
+function BaseTabItem<T>({
   tab,
   isActive,
   onActivate,
   onClose,
   onContextMenu,
-}: TabItemProps) {
+  children,
+}: BaseTabItemProps<T>) {
   const controls = useDragControls();
 
   return (
     <Reorder.Item
       as="div"
       value={tab}
-      id={tab.id}
+      id={(tab as any).id}
       dragListener={false}
       dragControls={controls}
       className={`request-tab-item ${isActive ? "active" : ""}`}
@@ -41,6 +43,32 @@ export function TabItem({
       whileDrag={{ boxShadow: "0 2px 8px rgba(0,0,0,0.32)", zIndex: 1 }}
       transition={{ duration: 0.15 }}
     >
+      {children}
+      <button
+        className="request-tab-close"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        ×
+      </button>
+    </Reorder.Item>
+  );
+}
+
+interface TabItemProps {
+  tab: RequestTabType;
+  isActive: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+}
+
+export function TabItem(props: TabItemProps) {
+  const { tab } = props;
+  return (
+    <BaseTabItem {...props}>
       <span
         className="request-tab-method"
         style={{
@@ -56,16 +84,7 @@ export function TabItem({
           ●
         </span>
       )}
-      <button
-        className="request-tab-close"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      >
-        ×
-      </button>
-    </Reorder.Item>
+    </BaseTabItem>
   );
 }
 
@@ -77,35 +96,10 @@ interface FlowTabItemProps {
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
-export function FlowTabItem({
-  tab,
-  isActive,
-  onActivate,
-  onClose,
-  onContextMenu,
-}: FlowTabItemProps) {
-  const controls = useDragControls();
-
+export function FlowTabItem(props: FlowTabItemProps) {
+  const { tab } = props;
   return (
-    <Reorder.Item
-      as="div"
-      value={tab}
-      id={tab.id}
-      dragListener={false}
-      dragControls={controls}
-      className={`request-tab-item ${isActive ? "active" : ""}`}
-      onClick={onActivate}
-      onContextMenu={onContextMenu}
-      onAuxClick={(e) => {
-        if (e.button === 1) {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      onPointerDown={(e) => controls.start(e)}
-      whileDrag={{ boxShadow: "0 2px 8px rgba(0,0,0,0.32)", zIndex: 1 }}
-      transition={{ duration: 0.15 }}
-    >
+    <BaseTabItem {...props}>
       <span className="request-tab-name">
         {tab.mode === "runner" ? "▶ " : ""}
         {tab.name}
@@ -115,15 +109,6 @@ export function FlowTabItem({
           ●
         </span>
       )}
-      <button
-        className="request-tab-close"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      >
-        ×
-      </button>
-    </Reorder.Item>
+    </BaseTabItem>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import AutoSuggestInput from "./AutoSuggestInput";
+import KeyValueRow from "./KeyValueRow";
 import { HTTP_HEADER_NAMES, HEADER_VALUE_SUGGESTIONS } from "../utils/http-headers";
 
 export interface KeyValuePair {
@@ -62,38 +62,16 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
   return (
     <div className="kv-editor">
       {pairs.map((pair, i) => (
-        <div className="kv-row" key={i}>
-          <input
-            type="checkbox"
-            checked={pair.enabled}
-            onChange={(e) => updatePair(i, "enabled", e.target.checked)}
-          />
-          <AutoSuggestInput
-            type="text"
-            placeholder="Key"
-            value={pair.key}
-            onValueChange={(v) => updatePair(i, "key", v)}
-            variables={variables}
-            suggestions={keySuggestions}
-            envName={envName}
-          />
-          <AutoSuggestInput
-            type="text"
-            placeholder="Value"
-            value={pair.value}
-            onValueChange={(v) => updatePair(i, "value", v)}
-            variables={variables}
-            suggestions={getValueSuggestions(pair.key)}
-            envName={envName}
-          />
-          <button
-            className="kv-remove-btn"
-            onClick={() => removePair(i)}
-            title="Remove"
-          >
-            ×
-          </button>
-        </div>
+        <KeyValueRow
+          key={i}
+          pair={pair}
+          keySuggestions={keySuggestions}
+          valueSuggestions={getValueSuggestions(pair.key)}
+          variables={variables}
+          envName={envName}
+          onUpdate={(field, value) => updatePair(i, field, value)}
+          onRemove={() => removePair(i)}
+        />
       ))}
       <button className="kv-add-btn" onClick={addPair}>
         + Add

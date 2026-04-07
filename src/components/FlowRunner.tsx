@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FlowRunState } from "../types/electron";
-import { getStatusClass } from "../utils/helpers";
-import { METHOD_COLORS } from "../utils/http";
+import FlowStepResultItem from "./FlowStepResultItem";
 import StepDetail from "./StepDetail";
 
 interface FlowRunnerProps {
@@ -81,45 +80,14 @@ const FlowRunner: React.FC<FlowRunnerProps> = ({
       <div className="flow-runner-body">
         <div className="flow-runner-steps">
           {runState.stepResults.map((result, index) => (
-            <div
-              className={`flow-runner-step ${selectedStepIndex === index ? "selected" : ""} ${result.status}`}
+            <FlowStepResultItem
               key={result.stepId}
+              result={result}
+              index={index}
+              isSelected={selectedStepIndex === index}
               onClick={() => setSelectedStepIndex(index)}
-            >
-              <span className="flow-runner-step-icon">
-                {result.status === "success"
-                  ? "✓"
-                  : result.status === "error"
-                    ? "✗"
-                    : result.status === "skipped"
-                      ? "⏭"
-                      : "⋯"}
-              </span>
-              <span className="flow-runner-step-index">{index + 1}.</span>
-              <span
-                className="flow-runner-step-method"
-                style={{
-                  color:
-                    METHOD_COLORS[result.requestMethod] ||
-                    "var(--text-secondary)",
-                }}
-              >
-                {result.requestMethod}
-              </span>
-              <span className="flow-runner-step-name">
-                {result.requestName}
-              </span>
-              {result.execution?.response && (
-                <span
-                  className={`flow-runner-step-status status-${getStatusClass(result.execution.response.status)}`}
-                >
-                  {result.execution.response.status}
-                </span>
-              )}
-              <span className="flow-runner-step-time">
-                {result.durationMs}ms
-              </span>
-            </div>
+              classPrefix="flow-runner"
+            />
           ))}
 
           {/* Show placeholder for steps not yet run */}

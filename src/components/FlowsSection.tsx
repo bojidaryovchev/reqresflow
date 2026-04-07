@@ -1,4 +1,5 @@
 import React from "react";
+import FlowItem from "./FlowItem";
 import { Flow } from "../types/electron";
 import { RenameState } from "./CollectionsSection";
 
@@ -45,67 +46,20 @@ const FlowsSection: React.FC<FlowsSectionProps> = ({
         </div>
       )}
       {flows.map((flow) => (
-        <div
-          className={`flow-item${activeFlowId === flow.id ? " active" : ""}`}
+        <FlowItem
           key={flow.id}
-        >
-          <div
-            className="flow-item-header"
-            onClick={() => onEditFlow(flow)}
-          >
-            {editingId === flow.id ? (
-              <input
-                className="rename-input"
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onBlur={commitRename}
-                onKeyDown={handleRenameKeyDown}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span
-                className="flow-item-name"
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  startRename(flow.id, flow.name);
-                }}
-              >
-                {flow.name}
-              </span>
-            )}
-            <span className="flow-item-steps">
-              {flow.steps.length} step
-              {flow.steps.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <div
-            className="collection-actions"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="sidebar-icon-btn"
-              onClick={() => startRename(flow.id, flow.name)}
-              title="Rename flow"
-            >
-              ✎
-            </button>
-            <button
-              className="sidebar-icon-btn"
-              onClick={() => onRunFlow(flow)}
-              title="Run flow"
-            >
-              ▶
-            </button>
-            <button
-              className="sidebar-icon-btn danger"
-              onClick={() => onDeleteFlow(flow.id)}
-              title="Delete flow"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+          flow={flow}
+          isActive={activeFlowId === flow.id}
+          editingId={editingId}
+          editingName={editingName}
+          setEditingName={setEditingName}
+          startRename={startRename}
+          commitRename={commitRename}
+          handleRenameKeyDown={handleRenameKeyDown}
+          onEdit={() => onEditFlow(flow)}
+          onRun={() => onRunFlow(flow)}
+          onDelete={() => onDeleteFlow(flow.id)}
+        />
       ))}
     </div>
   </>

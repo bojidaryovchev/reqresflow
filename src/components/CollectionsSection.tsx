@@ -3,7 +3,7 @@ import {
   Collection,
   SavedRequest,
 } from "../types/electron";
-import { METHOD_COLORS } from "../utils/http";
+import CollectionRequestItem from "./CollectionRequestItem";
 
 interface RenameState {
   editingId: string | null;
@@ -137,151 +137,23 @@ const CollectionsSection: React.FC<CollectionsSectionProps> = ({
                 </div>
               )}
               {collection.requests.map((req) => {
-                const hasVariants = req.payloads && req.payloads.length > 1;
                 return (
-                  <div key={req.id}>
-                    <div
-                      className={`request-item${activeCollectionId === collection.id && activeRequestId === req.id ? " active" : ""}`}
-                      onClick={() =>
-                        onLoadRequest(req, collection.id, req.id)
-                      }
-                    >
-                      <span
-                        className="request-method-badge"
-                        style={{
-                          color:
-                            METHOD_COLORS[req.method] ||
-                            "var(--text-secondary)",
-                        }}
-                      >
-                        {req.method}
-                      </span>
-                      {editingId === req.id ? (
-                        <input
-                          className="rename-input"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onBlur={commitRename}
-                          onKeyDown={handleRenameKeyDown}
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <span className="request-name">{req.name}</span>
-                      )}
-                      <div
-                        className="collection-actions"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          className="sidebar-icon-btn"
-                          onClick={() => startRename(req.id, req.name)}
-                          title="Rename"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          className="sidebar-icon-btn danger"
-                          onClick={() =>
-                            onDeleteRequest(collection.id, req.id)
-                          }
-                          title="Delete request"
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <button
-                        className="sidebar-icon-btn request-play-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const payloadId =
-                            req.activePayloadId || req.payloads?.[0]?.id;
-                          if (payloadId) {
-                            onRunVariant(
-                              req,
-                              collection.id,
-                              req.id,
-                              payloadId,
-                            );
-                          }
-                        }}
-                        title="Send request"
-                      >
-                        ▶
-                      </button>
-                    </div>
-                    {hasVariants && (
-                      <div className="request-variants">
-                        {req.payloads?.map((payload) => (
-                          <div
-                            className="request-variant-item"
-                            key={payload.id}
-                            onClick={() => {
-                              onLoadRequest(
-                                { ...req, activePayloadId: payload.id },
-                                collection.id,
-                                req.id,
-                              );
-                              onRequestPanelChange("body");
-                            }}
-                          >
-                            {editingId === payload.id ? (
-                              <input
-                                className="rename-input"
-                                value={editingName}
-                                onChange={(e) =>
-                                  setEditingName(e.target.value)
-                                }
-                                onBlur={commitRename}
-                                onKeyDown={handleRenameKeyDown}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <span
-                                className="request-variant-name"
-                                onDoubleClick={(e) => {
-                                  e.stopPropagation();
-                                  startRename(payload.id, payload.name);
-                                }}
-                              >
-                                {payload.name}
-                              </span>
-                            )}
-                            <div
-                              className="collection-actions"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                className="sidebar-icon-btn"
-                                onClick={() =>
-                                  startRename(payload.id, payload.name)
-                                }
-                                title="Rename payload"
-                              >
-                                ✎
-                              </button>
-                            </div>
-                            <button
-                              className="sidebar-icon-btn request-variant-play"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRunVariant(
-                                  req,
-                                  collection.id,
-                                  req.id,
-                                  payload.id,
-                                );
-                              }}
-                              title={`Send with ${payload.name}`}
-                            >
-                              ▶
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <CollectionRequestItem
+                    key={req.id}
+                    req={req}
+                    collectionId={collection.id}
+                    isActive={activeCollectionId === collection.id && activeRequestId === req.id}
+                    editingId={editingId}
+                    editingName={editingName}
+                    setEditingName={setEditingName}
+                    startRename={startRename}
+                    commitRename={commitRename}
+                    handleRenameKeyDown={handleRenameKeyDown}
+                    onLoadRequest={onLoadRequest}
+                    onDeleteRequest={onDeleteRequest}
+                    onRunVariant={onRunVariant}
+                    onRequestPanelChange={onRequestPanelChange}
+                  />
                 );
               })}
             </div>

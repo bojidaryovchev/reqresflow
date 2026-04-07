@@ -1,6 +1,7 @@
 import React from "react";
 import { FlowStep, ResponseCapture } from "../types/electron";
 import { METHOD_COLORS } from "../utils/http";
+import StepCaptureRow from "./StepCaptureRow";
 
 interface FlowStepRowProps {
   step: FlowStep;
@@ -124,50 +125,12 @@ const FlowStepRow: React.FC<FlowStepRowProps> = ({
               </div>
             )}
             {step.captures.map((cap) => (
-              <div className="flow-step-capture-row" key={cap.id}>
-                <input
-                  className="flow-step-capture-input"
-                  placeholder="Variable name"
-                  value={cap.varName}
-                  onChange={(e) =>
-                    onUpdateCapture(cap.id, { varName: e.target.value })
-                  }
-                />
-                <select
-                  className="flow-step-capture-select"
-                  value={cap.source}
-                  onChange={(e) =>
-                    onUpdateCapture(cap.id, {
-                      source: e.target.value as "body" | "header" | "status",
-                    })
-                  }
-                >
-                  <option value="body">Body</option>
-                  <option value="header">Header</option>
-                  <option value="status">Status</option>
-                </select>
-                <input
-                  className="flow-step-capture-input"
-                  placeholder={
-                    cap.source === "body"
-                      ? "JSON path (e.g. data.token)"
-                      : cap.source === "header"
-                        ? "Header name"
-                        : ""
-                  }
-                  value={cap.path}
-                  onChange={(e) =>
-                    onUpdateCapture(cap.id, { path: e.target.value })
-                  }
-                  disabled={cap.source === "status"}
-                />
-                <button
-                  className="flow-step-capture-remove"
-                  onClick={() => onRemoveCapture(cap.id)}
-                >
-                  ×
-                </button>
-              </div>
+              <StepCaptureRow
+                key={cap.id}
+                capture={cap}
+                onUpdate={onUpdateCapture}
+                onRemove={onRemoveCapture}
+              />
             ))}
           </div>
         </div>

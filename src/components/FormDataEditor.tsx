@@ -1,5 +1,5 @@
 import React from "react";
-import AutoSuggestInput from "./AutoSuggestInput";
+import FormDataRow from "./FormDataRow";
 
 interface FormDataField {
   enabled: boolean;
@@ -26,68 +26,19 @@ const FormDataEditor: React.FC<FormDataEditorProps> = ({
   return (
     <div className="form-data-editor">
       {fields.map((field, i) => (
-        <div className="form-data-row" key={i}>
-          <input
-            type="checkbox"
-            checked={field.enabled}
-            onChange={(e) => {
-              const updated = [...fields];
-              updated[i] = { ...updated[i], enabled: e.target.checked };
-              onUpdate(updated);
-            }}
-          />
-          <AutoSuggestInput
-            type="text"
-            placeholder="Key"
-            value={field.key}
-            onValueChange={(v) => {
-              const updated = [...fields];
-              updated[i] = { ...updated[i], key: v };
-              onUpdate(updated);
-            }}
-            variables={envVariables}
-            envName={envName}
-          />
-          <AutoSuggestInput
-            type="text"
-            placeholder="Value"
-            value={field.value}
-            onValueChange={(v) => {
-              const updated = [...fields];
-              updated[i] = { ...updated[i], value: v };
-              onUpdate(updated);
-            }}
-            variables={envVariables}
-            envName={envName}
-          />
-          {bodyType === "form-data" && (
-            <select
-              className="form-data-type-select"
-              value={field.type}
-              onChange={(e) => {
-                const updated = [...fields];
-                updated[i] = {
-                  ...updated[i],
-                  type: e.target.value as "text" | "file",
-                };
-                onUpdate(updated);
-              }}
-            >
-              <option value="text">Text</option>
-              <option value="file">File</option>
-            </select>
-          )}
-          <button
-            className="kv-remove-btn"
-            onClick={() => {
-              const updated = fields.filter((_, j) => j !== i);
-              onUpdate(updated);
-            }}
-            title="Remove"
-          >
-            ×
-          </button>
-        </div>
+        <FormDataRow
+          key={i}
+          field={field}
+          bodyType={bodyType}
+          envVariables={envVariables}
+          envName={envName}
+          onUpdate={(updates) => {
+            const updated = [...fields];
+            updated[i] = { ...updated[i], ...updates };
+            onUpdate(updated);
+          }}
+          onRemove={() => onUpdate(fields.filter((_, j) => j !== i))}
+        />
       ))}
       <button
         className="kv-add-btn"

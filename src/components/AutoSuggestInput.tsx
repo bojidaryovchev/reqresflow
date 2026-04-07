@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import SuggestionDropdown from "./SuggestionDropdown";
+import VariableHighlightOverlay from "./VariableHighlightOverlay";
+import VariableValueTooltip, { type HoverVar } from "./VariableValueTooltip";
 
 interface AutoSuggestInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   variables: { key: string; value: string }[];
@@ -32,12 +34,7 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
     left: number;
     width: number;
   }>({ top: 0, left: 0, width: 0 });
-  const [hoverVar, setHoverVar] = useState<{
-    key: string;
-    value: string;
-    top: number;
-    left: number;
-  } | null>(null);
+  const [hoverVar, setHoverVar] = useState<HoverVar | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -271,24 +268,12 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
   return (
     <div className={`autosuggest-wrapper${hasVars ? " has-vars" : ""}`}>
       {hasVars && (
-        <div className="autosuggest-highlight" ref={highlightRef} aria-hidden>
-          {highlightedParts.map((part, i) =>
-            part.isVar ? (
-              <span
-                key={i}
-                className="env-var-highlight"
-                onMouseEnter={(e) =>
-                  handleVarMouseEnter(e, part.text.slice(2, -2))
-                }
-                onMouseLeave={handleVarMouseLeave}
-              >
-                {part.text}
-              </span>
-            ) : (
-              <span key={i}>{part.text}</span>
-            ),
-          )}
-        </div>
+        <VariableHighlightOverlay
+          parts={highlightedParts}
+          onVarMouseEnter={handleVarMouseEnter}
+          onVarMouseLeave={handleVarMouseLeave}
+          highlightRef={highlightRef}
+        />
       )}
       <input
         {...rest}
@@ -299,72 +284,29 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
         onBlur={handleBlur}
         onScroll={handleScroll}
       />
-      {hoverVar &&
-        createPortal(
-          <div
-            className="env-var-tooltip"
-            style={{ top: hoverVar.top, left: hoverVar.left }}
-            onMouseEnter={() => clearTimeout(hoverTimeoutRef.current)}
-            onMouseLeave={handleVarMouseLeave}
-          >
-            <div className="env-var-tooltip-row">
-              <span className="env-var-tooltip-label">Variable</span>
-              <span className="env-var-tooltip-val">{hoverVar.key}</span>
-            </div>
-            <div className="env-var-tooltip-row">
-              <span className="env-var-tooltip-label">Value</span>
-              <span className="env-var-tooltip-val">
-                {hoverVar.value || (
-                  <span className="env-var-tooltip-empty">empty</span>
-                )}
-              </span>
-            </div>
-            {envName && (
-              <div className="env-var-tooltip-row">
-                <span className="env-var-tooltip-label">Environment</span>
-                <span className="env-var-tooltip-val">{envName}</span>
-              </div>
-            )}
-            {!variables.find((v) => v.key === hoverVar.key) && (
-              <div className="env-var-tooltip-warning">
-                Variable not defined in current environment
-              </div>
-            )}
-          </div>,
-          document.body,
-        )}
-      {showSuggestions &&
-        activeList.length > 0 &&
-        createPortal(
-          <div
-            className="autosuggest-dropdown"
-            ref={dropdownRef}
-            style={{
-              top: dropdownPos.top,
-              left: dropdownPos.left,
-              width: dropdownPos.width,
-            }}
-          >
-            {activeList.map((item, i) => (
-              <div
-                key={item.label}
-                className={`autosuggest-item ${i === selectedIndex ? "selected" : ""}`}
-                onMouseDown={() =>
-                  suggestMode === "variables"
-                    ? insertVariable(item.label)
-                    : insertSuggestion(item.label)
-                }
-                onMouseEnter={() => setSelectedIndex(i)}
-              >
-                <span className="autosuggest-var-name">{item.label}</span>
-                {item.detail && (
-                  <span className="autosuggest-var-value">{item.detail}</span>
-                )}
-              </div>
-            ))}
-          </div>,
-          document.body,
-        )}
+      {hoverVar && (
+        <VariableValueTooltip
+          hoverVar={hoverVar}
+          variables={variables}
+          envName={envName}
+          onMouseEnter={() => clearTimeout(hoverTimeoutRef.current)}
+          onMouseLeave={handleVarMouseLeave}
+        />
+      )}
+      {showSuggestions && activeList.length > 0 && (
+        <SuggestionDropdown
+          items={activeList}
+          selectedIndex={selectedIndex}
+          dropdownPos={dropdownPos}
+          dropdownRef={dropdownRef}
+          onSelect={(i) =>
+            suggestMode === "variables"
+              ? insertVariable(filtered[i].key)
+              : insertSuggestion(filteredSuggestions[i])
+          }
+          onHover={setSelectedIndex}
+        />
+      )}
     </div>
   );
 };
