@@ -258,40 +258,41 @@ function dockerExec(args: string[]): Promise<string> {
   });
 }
 
-ipcMain.handle(
-  "generators:build",
-  async (_event, projectDir: string) => {
-    try {
-      // Validate the directory exists and has a Dockerfile
-      if (!fs.existsSync(path.join(projectDir, "Dockerfile"))) {
-        return { success: false, error: "No Dockerfile found in project directory", logs: "" };
-      }
-      return new Promise<{ success: boolean; error?: string; logs: string }>(
-        (resolve) => {
-          execFile(
-            "docker",
-            ["build", "-t", "reqresflow-generators", projectDir],
-            { timeout: 120_000, maxBuffer: 1024 * 1024 },
-            (err, stdout, stderr) => {
-              const logs = (stdout + stderr).trim();
-              if (err) {
-                resolve({ success: false, error: err.message, logs });
-              } else {
-                resolve({ success: true, logs });
-              }
-            },
-          );
-        },
-      );
-    } catch (err: unknown) {
+ipcMain.handle("generators:build", async (_event, projectDir: string) => {
+  try {
+    // Validate the directory exists and has a Dockerfile
+    if (!fs.existsSync(path.join(projectDir, "Dockerfile"))) {
       return {
         success: false,
-        error: err instanceof Error ? err.message : String(err),
+        error: "No Dockerfile found in project directory",
         logs: "",
       };
     }
-  },
-);
+    return new Promise<{ success: boolean; error?: string; logs: string }>(
+      (resolve) => {
+        execFile(
+          "docker",
+          ["build", "-t", "reqresflow-generators", projectDir],
+          { timeout: 120_000, maxBuffer: 1024 * 1024 },
+          (err, stdout, stderr) => {
+            const logs = (stdout + stderr).trim();
+            if (err) {
+              resolve({ success: false, error: err.message, logs });
+            } else {
+              resolve({ success: true, logs });
+            }
+          },
+        );
+      },
+    );
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      logs: "",
+    };
+  }
+});
 
 ipcMain.handle(
   "generators:start",
@@ -333,33 +334,27 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle(
-  "generators:stop",
-  async (_event, containerName: string) => {
-    try {
-      await dockerExec(["rm", "-f", containerName]);
-    } catch {
-      // Ignore errors if container doesn't exist
-    }
-  },
-);
+ipcMain.handle("generators:stop", async (_event, containerName: string) => {
+  try {
+    await dockerExec(["rm", "-f", containerName]);
+  } catch {
+    // Ignore errors if container doesn't exist
+  }
+});
 
-ipcMain.handle(
-  "generators:logs",
-  async (_event, containerName: string) => {
-    return new Promise<string>((resolve) => {
-      execFile(
-        "docker",
-        ["logs", "--tail", "200", containerName],
-        { timeout: 10_000 },
-        (_err, stdout, stderr) => {
-          // docker logs sends container stdout to stdout and container stderr to stderr
-          resolve((stdout + stderr).trim());
-        },
-      );
-    });
-  },
-);
+ipcMain.handle("generators:logs", async (_event, containerName: string) => {
+  return new Promise<string>((resolve) => {
+    execFile(
+      "docker",
+      ["logs", "--tail", "200", containerName],
+      { timeout: 10_000 },
+      (_err, stdout, stderr) => {
+        // docker logs sends container stdout to stdout and container stderr to stderr
+        resolve((stdout + stderr).trim());
+      },
+    );
+  });
+});
 
 ipcMain.handle("generators:health", async (_event, port: number) => {
   try {

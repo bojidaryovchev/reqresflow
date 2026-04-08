@@ -48,8 +48,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("generators:logs", containerName),
   generatorsHealth: (port: number) =>
     ipcRenderer.invoke("generators:health", port),
-  generatorsList: (port: number) =>
-    ipcRenderer.invoke("generators:list", port),
+  generatorsList: (port: number) => ipcRenderer.invoke("generators:list", port),
   generatorsInvoke: (port: number, name: string) =>
     ipcRenderer.invoke("generators:invoke", port, name),
   selectDirectory: () => ipcRenderer.invoke("dialog:select-directory"),

@@ -86,7 +86,8 @@ export function useGenerators(): UseGeneratorsReturn {
   }, []);
 
   const buildImage = useCallback(async () => {
-    if (!generatorConfig) return { success: false, error: "No config", logs: "" };
+    if (!generatorConfig)
+      return { success: false, error: "No config", logs: "" };
     setContainerStatus("starting");
     setStatusError(null);
     setContainerLogs("Building image...\n");
@@ -102,12 +103,15 @@ export function useGenerators(): UseGeneratorsReturn {
   }, [generatorConfig]);
 
   const startContainer = useCallback(async () => {
-    if (!generatorConfig) return { success: false, error: "No config", logs: "" };
+    if (!generatorConfig)
+      return { success: false, error: "No config", logs: "" };
     setContainerStatus("starting");
     setStatusError(null);
     const result = await window.electronAPI.generatorsStart(generatorConfig);
     if (result.logs) {
-      setContainerLogs((prev) => prev + "\nStarting container...\n" + result.logs);
+      setContainerLogs(
+        (prev) => prev + "\nStarting container...\n" + result.logs,
+      );
     }
     if (result.success) {
       // Wait a moment for the container to start responding
@@ -142,9 +146,7 @@ export function useGenerators(): UseGeneratorsReturn {
   const removeConfig = useCallback(async () => {
     if (generatorConfig) {
       try {
-        await window.electronAPI.generatorsStop(
-          generatorConfig.containerName,
-        );
+        await window.electronAPI.generatorsStop(generatorConfig.containerName);
       } catch {
         // Ignore
       }
@@ -196,7 +198,8 @@ export function useGenerators(): UseGeneratorsReturn {
     }
     // Start
     setContainerLogs((prev) => prev + "\nStarting container...\n");
-    const startResult = await window.electronAPI.generatorsStart(generatorConfig);
+    const startResult =
+      await window.electronAPI.generatorsStart(generatorConfig);
     if (startResult.logs) {
       setContainerLogs((prev) => prev + startResult.logs + "\n");
     }
@@ -206,10 +209,14 @@ export function useGenerators(): UseGeneratorsReturn {
       return;
     }
     await new Promise((r) => setTimeout(r, 2000));
-    const healthy = await window.electronAPI.generatorsHealth(generatorConfig.port);
+    const healthy = await window.electronAPI.generatorsHealth(
+      generatorConfig.port,
+    );
     if (healthy) {
       setContainerStatus("running");
-      const list = await window.electronAPI.generatorsList(generatorConfig.port);
+      const list = await window.electronAPI.generatorsList(
+        generatorConfig.port,
+      );
       setGenerators(list);
     } else {
       setContainerStatus("error");

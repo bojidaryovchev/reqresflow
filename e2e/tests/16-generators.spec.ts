@@ -308,9 +308,7 @@ test.describe("Generators: Docker Lifecycle", () => {
   });
 
   test("Rebuild rebuilds image and restarts container", async () => {
-    await page
-      .locator(`${S.generatorsActionBtn}:has-text("Rebuild")`)
-      .click();
+    await page.locator(`${S.generatorsActionBtn}:has-text("Rebuild")`).click();
 
     // Wait for running status (longer timeout for Docker rebuild)
     // Note: "Rebuilding..." transient state may complete too fast with cached layers to assert on
@@ -325,9 +323,7 @@ test.describe("Generators: Docker Lifecycle", () => {
 
   test("Refresh re-fetches generator list without restart", async () => {
     const countBefore = await page.locator(S.generatorItem).count();
-    await page
-      .locator(`${S.generatorsActionBtn}:has-text("Refresh")`)
-      .click();
+    await page.locator(`${S.generatorsActionBtn}:has-text("Refresh")`).click();
     // Wait a moment for the refresh
     await page.waitForTimeout(1500);
     const countAfter = await page.locator(S.generatorItem).count();
@@ -481,12 +477,8 @@ test.describe("Generators: Request Substitution", () => {
     const rows = page.locator(S.kvRow);
     const lastRow = rows.last();
 
-    const keyInput = lastRow.locator(
-      `${S.autosuggestWrapper} input`,
-    ).first();
-    const valueInput = lastRow.locator(
-      `${S.autosuggestWrapper} input`,
-    ).last();
+    const keyInput = lastRow.locator(`${S.autosuggestWrapper} input`).first();
+    const valueInput = lastRow.locator(`${S.autosuggestWrapper} input`).last();
 
     await keyInput.fill("X-Test-Id");
     await valueInput.fill("{{$uuidv4}}");

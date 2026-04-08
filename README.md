@@ -75,16 +75,16 @@ npm run test:e2e
 
 ## Tech Stack
 
-| Layer         | Technology                              |
-| ------------- | --------------------------------------- |
-| Desktop shell | Electron 41.1.1                         |
-| UI framework  | React 19                                |
-| Language      | TypeScript ~4.5                         |
-| Bundler       | Vite 5.4 (via Electron Forge)           |
-| Animation     | Motion (Framer Motion) 12               |
-| Code editor   | CodeMirror 6 (@uiw/react-codemirror)    |
+| Layer         | Technology                                 |
+| ------------- | ------------------------------------------ |
+| Desktop shell | Electron 41.1.1                            |
+| UI framework  | React 19                                   |
+| Language      | TypeScript ~4.5                            |
+| Bundler       | Vite 5.4 (via Electron Forge)              |
+| Animation     | Motion (Framer Motion) 12                  |
+| Code editor   | CodeMirror 6 (@uiw/react-codemirror)       |
 | Styling       | Single CSS file with CSS custom properties |
-| Testing       | Playwright 1.59 (Electron mode)         |
+| Testing       | Playwright 1.59 (Electron mode)            |
 
 ---
 
@@ -175,13 +175,14 @@ The renderer never accesses the filesystem or network directly — all I/O goes 
 
 Captures extract values from a response and write them into environment variables.
 
-| Source            | Path field             | Example                  |
-| ----------------- | ---------------------- | ------------------------ |
-| Body (JSON path)  | Dot-notation JSON path | `data.token`, `items.0.id` |
-| Header            | Header name            | `x-request-id`           |
-| Status code       | (not needed)           | Captures `"200"`, `"404"` |
+| Source           | Path field             | Example                    |
+| ---------------- | ---------------------- | -------------------------- |
+| Body (JSON path) | Dot-notation JSON path | `data.token`, `items.0.id` |
+| Header           | Header name            | `x-request-id`             |
+| Status code      | (not needed)           | Captures `"200"`, `"404"`  |
 
 **Chaining example:**
+
 1. POST `/auth/login` → capture `data.token` into `{{token}}`
 2. GET `/users/me` with `Authorization: Bearer {{token}}`
 
@@ -219,24 +220,24 @@ Flows chain saved requests into an ordered sequence and execute them one by one.
 
 The left sidebar has three switchable sections:
 
-| Section       | Shows                              | Tab bar context        |
-| ------------- | ---------------------------------- | ---------------------- |
-| Collections   | Saved request groups               | Request tabs           |
-| History       | Recent requests (newest first)     | Request tabs           |
-| Flows         | Multi-step sequences               | Flow tabs              |
+| Section     | Shows                          | Tab bar context |
+| ----------- | ------------------------------ | --------------- |
+| Collections | Saved request groups           | Request tabs    |
+| History     | Recent requests (newest first) | Request tabs    |
+| Flows       | Multi-step sequences           | Flow tabs       |
 
 - Resize the sidebar by dragging its right edge (clamped between 160–600px).
 - Quick-run requests or specific payload variants directly from the sidebar with the ▶ button.
 
 ### Keyboard Shortcuts
 
-| Shortcut       | Action                                   |
-| -------------- | ---------------------------------------- |
-| Ctrl+S         | Save request to collection               |
-| Enter          | Send request (when URL field is focused) |
-| Shift+Alt+F    | Format body content                      |
-| Enter          | Confirm rename                           |
-| Escape         | Cancel rename                            |
+| Shortcut    | Action                                   |
+| ----------- | ---------------------------------------- |
+| Ctrl+S      | Save request to collection               |
+| Enter       | Send request (when URL field is focused) |
+| Shift+Alt+F | Format body content                      |
+| Enter       | Confirm rename                           |
+| Escape      | Cancel rename                            |
 
 ---
 
@@ -244,13 +245,13 @@ The left sidebar has three switchable sections:
 
 All data is stored as JSON files in `{userData}/reqresflow-data/`:
 
-| File               | Contents                              | Max entries |
-| ------------------ | ------------------------------------- | ----------- |
-| `collections.json` | Saved collections and their requests  | Unlimited   |
-| `environments.json`| Environments and their variables      | Unlimited   |
-| `history.json`     | Sent request history                  | 100         |
-| `flows.json`       | Multi-step flow definitions           | Unlimited   |
-| `session.json`     | Open tabs, active tab, active env     | 1           |
+| File                | Contents                             | Max entries |
+| ------------------- | ------------------------------------ | ----------- |
+| `collections.json`  | Saved collections and their requests | Unlimited   |
+| `environments.json` | Environments and their variables     | Unlimited   |
+| `history.json`      | Sent request history                 | 100         |
+| `flows.json`        | Multi-step flow definitions          | Unlimited   |
+| `session.json`      | Open tabs, active tab, active env    | 1           |
 
 - Saving is automatic and continuous — changes persist immediately.
 - On crash or unexpected exit, the app restores to its last saved state.
@@ -310,23 +311,23 @@ npm run test:e2e
 
 ### Test Coverage
 
-| Spec file                           | Area covered                     |
-| ----------------------------------- | -------------------------------- |
-| `01-app-launch-and-session`         | Startup, session restore         |
-| `02-tab-management`                 | Tab CRUD, reorder, context menu  |
-| `03-request-building`              | Method, URL, params, headers, body, auth |
-| `04-send-request`                   | Sending, response display        |
-| `05-collections`                    | Collection & request CRUD        |
-| `06-environments`                   | Environment & variable management|
-| `07-history`                        | History recording & replay       |
-| `08-flows`                          | Flow editor & runner             |
-| `09-sidebar`                        | Sidebar sections & resize        |
-| `10-keyboard-shortcuts`             | Ctrl+S, Enter, Shift+Alt+F       |
-| `11-data-persistence`               | Save/restore across restarts     |
-| `12-captures-e2e`                   | End-to-end capture chaining      |
-| `13-payload-variants`               | Variant CRUD & execution         |
-| `14-auto-suggest`                   | Variable & header suggestions    |
-| `15-flow-tab-management`            | Flow tab lifecycle               |
+| Spec file                   | Area covered                             |
+| --------------------------- | ---------------------------------------- |
+| `01-app-launch-and-session` | Startup, session restore                 |
+| `02-tab-management`         | Tab CRUD, reorder, context menu          |
+| `03-request-building`       | Method, URL, params, headers, body, auth |
+| `04-send-request`           | Sending, response display                |
+| `05-collections`            | Collection & request CRUD                |
+| `06-environments`           | Environment & variable management        |
+| `07-history`                | History recording & replay               |
+| `08-flows`                  | Flow editor & runner                     |
+| `09-sidebar`                | Sidebar sections & resize                |
+| `10-keyboard-shortcuts`     | Ctrl+S, Enter, Shift+Alt+F               |
+| `11-data-persistence`       | Save/restore across restarts             |
+| `12-captures-e2e`           | End-to-end capture chaining              |
+| `13-payload-variants`       | Variant CRUD & execution                 |
+| `14-auto-suggest`           | Variable & header suggestions            |
+| `15-flow-tab-management`    | Flow tab lifecycle                       |
 
 ---
 

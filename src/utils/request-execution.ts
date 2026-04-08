@@ -28,8 +28,12 @@ export async function executeRequest(
   // Resolve generator placeholders into virtual env vars
   const substitutableFields = [
     req.url,
-    ...(req.params || []).filter((p) => p.enabled).flatMap((p) => [p.key, p.value]),
-    ...(req.headers || []).filter((h) => h.enabled).flatMap((h) => [h.key, h.value]),
+    ...(req.params || [])
+      .filter((p) => p.enabled)
+      .flatMap((p) => [p.key, p.value]),
+    ...(req.headers || [])
+      .filter((h) => h.enabled)
+      .flatMap((h) => [h.key, h.value]),
     payload?.body || req.body || "",
   ];
   const generatorVars = await resolveGenerators(

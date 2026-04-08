@@ -223,8 +223,12 @@ declare global {
       loadGeneratorConfig: () => Promise<GeneratorConfig | null>;
       saveGeneratorConfig: (config: GeneratorConfig) => Promise<void>;
       removeGeneratorConfig: () => Promise<void>;
-      generatorsBuild: (projectDir: string) => Promise<{ success: boolean; error?: string; logs: string }>;
-      generatorsStart: (config: GeneratorConfig) => Promise<{ success: boolean; error?: string; logs: string }>;
+      generatorsBuild: (
+        projectDir: string,
+      ) => Promise<{ success: boolean; error?: string; logs: string }>;
+      generatorsStart: (
+        config: GeneratorConfig,
+      ) => Promise<{ success: boolean; error?: string; logs: string }>;
       generatorsStop: (containerName: string) => Promise<void>;
       generatorsLogs: (containerName: string) => Promise<string>;
       generatorsHealth: (port: number) => Promise<boolean>;

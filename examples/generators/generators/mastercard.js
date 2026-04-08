@@ -12,7 +12,8 @@ function getLuhnCheckDigit(input) {
 
 module.exports = {
   name: "mastercard",
-  description: "Generates a Luhn-valid 16-digit Mastercard number (51-55 prefix)",
+  description:
+    "Generates a Luhn-valid 16-digit Mastercard number (51-55 prefix)",
   generate() {
     const chars = "0123456789";
     // Mastercard: starts with 51-55, 16 digits total

@@ -65,12 +65,16 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
     const willShow = !showLogs;
     setShowLogs(willShow);
     if (willShow) {
-      onFetchLogs().catch(() => { /* ignored */ });
+      onFetchLogs().catch(() => {
+        /* ignored */
+      });
     }
   };
 
   const handleRefreshLogs = () => {
-    onFetchLogs().catch(() => { /* ignored */ });
+    onFetchLogs().catch(() => {
+      /* ignored */
+    });
   };
 
   // Auto-scroll logs to bottom
@@ -114,7 +118,10 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
       <div className="generators-config">
         <div className="generators-config-row">
           <span className="generators-config-label">Project</span>
-          <span className="generators-config-value" title={generatorConfig.projectDir}>
+          <span
+            className="generators-config-value"
+            title={generatorConfig.projectDir}
+          >
             {generatorConfig.projectDir.split(/[\\/]/).pop()}
           </span>
         </div>
@@ -124,12 +131,8 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
             {statusIndicator()} {containerStatus}
           </span>
         </div>
-        {statusError && (
-          <div className="generators-error">{statusError}</div>
-        )}
-        {buildError && (
-          <div className="generators-error">{buildError}</div>
-        )}
+        {statusError && <div className="generators-error">{statusError}</div>}
+        {buildError && <div className="generators-error">{buildError}</div>}
       </div>
 
       <div className="generators-actions">
@@ -192,11 +195,12 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
 
       {generatorConfig && (
         <div className="generators-logs-section">
-          <button
-            className="generators-logs-toggle"
-            onClick={handleToggleLogs}
-          >
-            <span className={`generators-logs-chevron ${showLogs ? "open" : ""}`}>▶</span>
+          <button className="generators-logs-toggle" onClick={handleToggleLogs}>
+            <span
+              className={`generators-logs-chevron ${showLogs ? "open" : ""}`}
+            >
+              ▶
+            </span>
             Container Logs
           </button>
           {showLogs && (
@@ -213,7 +217,9 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
                 {containerLogs ? (
                   <pre className="generators-logs-content">{containerLogs}</pre>
                 ) : (
-                  <span className="generators-logs-empty">No logs available</span>
+                  <span className="generators-logs-empty">
+                    No logs available
+                  </span>
                 )}
               </div>
             </>

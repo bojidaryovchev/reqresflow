@@ -156,34 +156,38 @@ The `server.js` file runs inside the Docker container and serves the generators 
 
 The `examples/generators/` project includes these generators out of the box:
 
-| Generator | Syntax | What It Produces |
-|---|---|---|
-| randomEmail | `{{$randomEmail}}` | Random email like `a8kx92m1@example.com` |
-| uuidv4 | `{{$uuidv4}}` | 16-character alphanumeric string |
-| randomString | `{{$randomString}}` | 10-character alphabetic string |
-| randomNumber | `{{$randomNumber}}` | 10-digit numeric string |
-| timestamp | `{{$timestamp}}` | Current Unix timestamp in seconds |
-| cardExpiry | `{{$cardExpiry}}` | Random future date in MM/YYYY format |
-| dob | `{{$dob}}` | Random date of birth (age 18–67) in DD/MM/YYYY |
-| visa | `{{$visa}}` | Luhn-valid 16-digit Visa card number |
-| mastercard | `{{$mastercard}}` | Luhn-valid 16-digit Mastercard number |
-| amex | `{{$amex}}` | Luhn-valid 15-digit Amex card number |
+| Generator    | Syntax              | What It Produces                               |
+| ------------ | ------------------- | ---------------------------------------------- |
+| randomEmail  | `{{$randomEmail}}`  | Random email like `a8kx92m1@example.com`       |
+| uuidv4       | `{{$uuidv4}}`       | 16-character alphanumeric string               |
+| randomString | `{{$randomString}}` | 10-character alphabetic string                 |
+| randomNumber | `{{$randomNumber}}` | 10-digit numeric string                        |
+| timestamp    | `{{$timestamp}}`    | Current Unix timestamp in seconds              |
+| cardExpiry   | `{{$cardExpiry}}`   | Random future date in MM/YYYY format           |
+| dob          | `{{$dob}}`          | Random date of birth (age 18–67) in DD/MM/YYYY |
+| visa         | `{{$visa}}`         | Luhn-valid 16-digit Visa card number           |
+| mastercard   | `{{$mastercard}}`   | Luhn-valid 16-digit Mastercard number          |
+| amex         | `{{$amex}}`         | Luhn-valid 15-digit Amex card number           |
 
 ## Troubleshooting
 
 ### "Build & Start" fails immediately
+
 - Make sure Docker is installed and the Docker daemon is running.
 - Check that your project folder has a valid `Dockerfile`.
 
 ### Status shows "error" after starting
+
 - The container started but isn't responding. Check the Container Logs for error messages.
 - The server inside the container may have crashed — look for stack traces in the logs.
 
 ### Generator placeholder appears literally in the sent request
+
 - The generator invocation failed silently. Make sure the container is running (green status).
 - Check that the generator name matches exactly — it's case-sensitive.
 
 ### No generators appear in the list
+
 - Make sure your generator `.js` files are in the `generators/` subfolder of your project.
 - Each file must export `name` and `generate` as described above.
 - Try clicking **Refresh** to re-fetch the list.

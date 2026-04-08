@@ -32,7 +32,9 @@ function loadGenerators() {
       console.error(`Failed to load generator ${file}:`, err.message);
     }
   }
-  console.log(`Loaded generators: ${Object.keys(generators).join(", ") || "(none)"}`);
+  console.log(
+    `Loaded generators: ${Object.keys(generators).join(", ") || "(none)"}`,
+  );
 }
 
 loadGenerators();
