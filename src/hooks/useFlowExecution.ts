@@ -5,6 +5,7 @@ import {
   Flow,
   FlowRunState,
   FlowRunStepResult,
+  GeneratorConfig,
   HistoryEntry,
   SavedRequest,
 } from "../types/electron";
@@ -19,6 +20,7 @@ interface UseFlowExecutionDeps {
   setEnvironments: React.Dispatch<React.SetStateAction<Environment[]>>;
   setHistory: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
   openFlowTab: (flow: Flow, mode?: "editor" | "runner") => void;
+  generatorConfig: GeneratorConfig | null;
 }
 
 export function useFlowExecution({
@@ -29,6 +31,7 @@ export function useFlowExecution({
   setEnvironments,
   setHistory,
   openFlowTab,
+  generatorConfig,
 }: UseFlowExecutionDeps) {
   const [flowRunState, setFlowRunState] = useState<FlowRunState | null>(null);
   const [flowRunHistory, setFlowRunHistory] = useState<
@@ -146,6 +149,7 @@ export function useFlowExecution({
         const { detail, updatedVars } = await executeRequest(
           mergedReq,
           currentVars,
+          generatorConfig,
         );
         const durationMs = Math.round(performance.now() - start);
 

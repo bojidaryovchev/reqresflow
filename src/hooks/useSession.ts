@@ -4,6 +4,7 @@ import {
   Collection,
   Environment,
   Flow,
+  GeneratorConfig,
   HistoryEntry,
   RawLanguage,
   RequestTab,
@@ -18,6 +19,9 @@ interface UseSessionDeps {
   setActiveEnvId: React.Dispatch<React.SetStateAction<string | null>>;
   setHistory: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
   setFlows: React.Dispatch<React.SetStateAction<Flow[]>>;
+  setGeneratorConfig: React.Dispatch<
+    React.SetStateAction<GeneratorConfig | null>
+  >;
   tabs: RequestTab[];
   activeTabId: string;
   activeEnvId: string | null;
@@ -31,6 +35,7 @@ export function useSession({
   setActiveEnvId,
   setHistory,
   setFlows,
+  setGeneratorConfig,
   tabs,
   activeTabId,
   activeEnvId,
@@ -45,11 +50,13 @@ export function useSession({
       window.electronAPI.loadHistory(),
       window.electronAPI.loadSession(),
       window.electronAPI.loadFlows(),
-    ]).then(([cols, envs, hist, session, loadedFlows]) => {
+      window.electronAPI.loadGeneratorConfig(),
+    ]).then(([cols, envs, hist, session, loadedFlows, genConfig]) => {
       setCollections(cols);
       setEnvironments(envs);
       setHistory(hist);
       setFlows(loadedFlows);
+      if (genConfig) setGeneratorConfig(genConfig);
 
       if (session && session.tabs && session.tabs.length > 0) {
         // Migrate old session tabs that may be missing new fields

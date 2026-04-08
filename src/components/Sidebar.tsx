@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import {
   Collection,
   Flow,
+  GeneratorConfig,
+  GeneratorInfo,
   SavedRequest,
   HistoryEntry,
 } from "../types/electron";
 import { generateId } from "../utils/helpers";
 import CollectionsSection from "./CollectionsSection";
+import GeneratorsSection from "./GeneratorsSection";
 import HistorySection from "./HistorySection";
 import FlowsSection from "./FlowsSection";
 
@@ -46,12 +49,26 @@ interface SidebarProps {
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
   activeFlowId: string | null;
+  // Generators
+  generatorConfig: GeneratorConfig | null;
+  generators: GeneratorInfo[];
+  containerStatus: "stopped" | "starting" | "running" | "error";
+  statusError: string | null;
+  onPickProjectDir: () => void;
+  onBuildGenerators: () => Promise<{ success: boolean; error?: string }>;
+  onStartGenerators: () => Promise<{ success: boolean; error?: string }>;
+  onStopGenerators: () => void;
+  onRemoveGenerators: () => void;
+  onRefreshGenerators: () => void;
+  onRebuildGenerators: () => Promise<void>;
+  containerLogs: string;
+  onFetchLogs: () => Promise<void>;
   style?: React.CSSProperties;
 }
 
 export type { SidebarSection };
 
-type SidebarSection = "collections" | "history" | "flows";
+type SidebarSection = "collections" | "history" | "flows" | "generators";
 
 const Sidebar: React.FC<SidebarProps> = ({
   collections,
@@ -75,6 +92,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeSection,
   onSectionChange,
   activeFlowId,
+  generatorConfig,
+  generators,
+  containerStatus,
+  statusError,
+  onPickProjectDir,
+  onBuildGenerators,
+  onStartGenerators,
+  onStopGenerators,
+  onRemoveGenerators,
+  onRefreshGenerators,
+  onRebuildGenerators,
+  containerLogs,
+  onFetchLogs,
   style,
 }) => {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(
@@ -224,6 +254,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="history-badge">{history.length}</span>
           )}
         </button>
+        <button
+          className={`sidebar-section-tab ${activeSection === "generators" ? "active" : ""}`}
+          onClick={() => onSectionChange("generators")}
+        >
+          Generators
+        </button>
       </div>
 
       {activeSection === "collections" && (
@@ -261,6 +297,24 @@ const Sidebar: React.FC<SidebarProps> = ({
           onEditFlow={onEditFlow}
           onRunFlow={onRunFlow}
           onDeleteFlow={(id) => onFlowsChange(flows.filter((f) => f.id !== id))}
+        />
+      )}
+
+      {activeSection === "generators" && (
+        <GeneratorsSection
+          generatorConfig={generatorConfig}
+          generators={generators}
+          containerStatus={containerStatus}
+          statusError={statusError}
+          containerLogs={containerLogs}
+          onPickProjectDir={onPickProjectDir}
+          onBuild={onBuildGenerators}
+          onStart={onStartGenerators}
+          onRebuild={onRebuildGenerators}
+          onStop={onStopGenerators}
+          onRemove={onRemoveGenerators}
+          onRefresh={onRefreshGenerators}
+          onFetchLogs={onFetchLogs}
         />
       )}
     </div>

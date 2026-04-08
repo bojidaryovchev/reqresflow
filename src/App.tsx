@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Reorder } from "motion/react";
 import EnvManager from "./components/EnvManager";
 import EnvironmentBar from "./components/EnvironmentBar";
@@ -17,6 +17,7 @@ import { useContextMenu } from "./hooks/useContextMenu";
 import { useEnvironments } from "./hooks/useEnvironments";
 import { useFlowExecution } from "./hooks/useFlowExecution";
 import { useFlowTabs } from "./hooks/useFlowTabs";
+import { useGenerators } from "./hooks/useGenerators";
 import { useHistory } from "./hooks/useHistory";
 import { usePayloads } from "./hooks/usePayloads";
 import { useSaveToCollection } from "./hooks/useSaveToCollection";
@@ -65,6 +66,24 @@ const App: React.FC = () => {
   // History
   const { history, setHistory, clearHistory } = useHistory();
 
+  // Generators
+  const {
+    generatorConfig,
+    setGeneratorConfig,
+    generators,
+    containerStatus,
+    statusError,
+    containerLogs,
+    pickProjectDir,
+    buildImage,
+    startContainer,
+    rebuildContainer,
+    stopContainer,
+    removeConfig,
+    refreshGenerators,
+    fetchLogs,
+  } = useGenerators();
+
   // Sidebar resize
   const { sidebarWidth, handleResizeMouseDown } = useSidebarResize();
 
@@ -107,6 +126,7 @@ const App: React.FC = () => {
     setEnvironments,
     setHistory,
     openFlowTab,
+    generatorConfig,
   });
 
   // Session loading & auto-save
@@ -118,6 +138,7 @@ const App: React.FC = () => {
     setActiveEnvId,
     setHistory,
     setFlows,
+    setGeneratorConfig,
     tabs,
     activeTabId,
     activeEnvId,
@@ -177,6 +198,7 @@ const App: React.FC = () => {
     activePayload,
     body,
     setLoading,
+    generatorConfig,
   });
 
   // Save to collection
@@ -249,6 +271,16 @@ const App: React.FC = () => {
     [],
   );
 
+  // Combine env vars with generator names for autocomplete
+  const allVariables = useMemo(() => {
+    const envVars = activeEnv?.variables ?? [];
+    const genVars = generators.map((g) => ({
+      key: `$${g.name}`,
+      value: g.description || "(generator)",
+    }));
+    return [...envVars, ...genVars];
+  }, [activeEnv?.variables, generators]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendRequest();
   };
@@ -283,6 +315,19 @@ const App: React.FC = () => {
         activeFlowId={
           flowTabs.find((ft) => ft.id === activeFlowTabId)?.flowId ?? null
         }
+        generatorConfig={generatorConfig}
+        generators={generators}
+        containerStatus={containerStatus}
+        statusError={statusError}
+        onPickProjectDir={pickProjectDir}
+        onBuildGenerators={buildImage}
+        onStartGenerators={startContainer}
+        onStopGenerators={stopContainer}
+        onRemoveGenerators={removeConfig}
+        onRefreshGenerators={refreshGenerators}
+        onRebuildGenerators={rebuildContainer}
+        containerLogs={containerLogs}
+        onFetchLogs={fetchLogs}
         style={{ width: sidebarWidth }}
       />
 
@@ -433,7 +478,7 @@ const App: React.FC = () => {
                   loading={loading}
                   isDirty={activeTab.isDirty}
                   savedRequestId={activeTab.savedRequestId}
-                  envVariables={activeEnv?.variables ?? []}
+                  envVariables={allVariables}
                   envName={activeEnv?.name}
                   onMethodChange={(method) =>
                     updateTab(activeTab.id, { method })
@@ -457,7 +502,7 @@ const App: React.FC = () => {
                     activeTab={activeTab}
                     requestPanel={requestPanel}
                     onRequestPanelChange={setRequestPanel}
-                    envVariables={activeEnv?.variables ?? []}
+                    envVariables={allVariables}
                     envName={activeEnv?.name}
                     onUpdateTab={(updates) => updateTab(activeTab.id, updates)}
                     activePayload={activePayload}

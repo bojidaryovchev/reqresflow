@@ -1,15 +1,18 @@
 import type {
   BodyType,
   FlowStepExecutionDetail,
+  GeneratorConfig,
   ResponseCapture,
   SavedRequest,
 } from "../types/electron";
 import { extractCaptures } from "./captures";
+import { resolveGenerators } from "./generators";
 import { buildRequestConfig } from "./request-builder";
 
 export async function executeRequest(
   req: SavedRequest,
   vars: { key: string; value: string }[],
+  generatorConfig?: GeneratorConfig | null,
 ): Promise<{
   detail: FlowStepExecutionDetail;
   updatedVars: { key: string; value: string }[];
@@ -22,6 +25,19 @@ export async function executeRequest(
         req.payloads[0]
       : null;
 
+  // Resolve generator placeholders into virtual env vars
+  const substitutableFields = [
+    req.url,
+    ...(req.params || []).filter((p) => p.enabled).flatMap((p) => [p.key, p.value]),
+    ...(req.headers || []).filter((h) => h.enabled).flatMap((h) => [h.key, h.value]),
+    payload?.body || req.body || "",
+  ];
+  const generatorVars = await resolveGenerators(
+    substitutableFields,
+    generatorConfig || null,
+  );
+  const allVars = [...vars, ...generatorVars];
+
   const built = buildRequestConfig({
     method: req.method,
     url: req.url,
@@ -32,7 +48,7 @@ export async function executeRequest(
     rawLanguage: req.rawLanguage || payload?.rawLanguage || "json",
     rawBody: payload?.body || req.body || "",
     payload,
-    vars,
+    vars: allVars,
   });
 
   const detail: FlowStepExecutionDetail = {

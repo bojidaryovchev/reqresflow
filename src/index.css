@@ -3054,3 +3054,269 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Generators Section ── */
+.generators-section {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.generators-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 8px;
+  text-align: center;
+}
+
+.generators-empty-text {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.generators-empty-text code {
+  color: #e5c07b;
+  background: rgba(229, 192, 123, 0.12);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.generators-setup-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.generators-setup-btn:hover {
+  background: var(--accent-hover);
+}
+
+.generators-config {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.generators-config-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.generators-config-label {
+  color: var(--text-muted);
+  min-width: 48px;
+}
+
+.generators-config-value {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.generators-error {
+  color: var(--error);
+  font-size: 11px;
+  padding: 4px 6px;
+  background: rgba(244, 71, 71, 0.1);
+  border-radius: var(--radius);
+}
+
+.generators-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.generators-action-btn {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.generators-action-btn:hover {
+  background: var(--bg-hover);
+}
+
+.generators-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.generators-action-btn.danger {
+  color: var(--error);
+}
+
+.generators-action-btn.danger:hover {
+  background: rgba(244, 71, 71, 0.15);
+}
+
+.gen-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gen-status-dot.running {
+  background: var(--success);
+}
+
+.gen-status-dot.starting {
+  background: var(--warning);
+  animation: pulse 1s infinite;
+}
+
+.gen-status-dot.error {
+  background: var(--error);
+}
+
+.gen-status-dot.stopped {
+  background: var(--text-muted);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.generators-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.generators-list-header {
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+}
+
+.generator-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.generator-item:hover {
+  background: var(--bg-hover);
+}
+
+.generator-name {
+  color: #e5c07b;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.generator-desc {
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generators-empty-list {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 8px 0;
+  line-height: 1.4;
+}
+
+.generators-empty-list code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.generators-logs-section {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.generators-logs-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.generators-logs-toggle:hover {
+  color: var(--text-primary);
+}
+
+.generators-logs-chevron {
+  font-size: 8px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+.generators-logs-chevron.open {
+  transform: rotate(90deg);
+}
+
+.generators-logs-actions {
+  margin: 4px 0;
+}
+
+.generators-logs {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 300px;
+  overflow: auto;
+  margin-top: 4px;
+}
+
+.generators-logs-content {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.generators-logs-empty {
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 8px;
+  display: block;
+}

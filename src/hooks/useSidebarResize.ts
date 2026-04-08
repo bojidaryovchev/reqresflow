@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 const SIDEBAR_MIN_WIDTH = 160;
 const SIDEBAR_MAX_WIDTH = 600;
-const SIDEBAR_DEFAULT_WIDTH = 300;
+const SIDEBAR_DEFAULT_WIDTH = 420;
 
 export function useSidebarResize() {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);

@@ -173,6 +173,17 @@ export interface SessionState {
   activeEnvId: string | null;
 }
 
+export interface GeneratorConfig {
+  projectDir: string; // path to user's generator project folder
+  containerName: string; // Docker container name
+  port: number; // localhost port the container exposes (default 7890)
+}
+
+export interface GeneratorInfo {
+  name: string;
+  description?: string;
+}
+
 export interface RequestTab {
   id: string;
   name: string;
@@ -208,6 +219,18 @@ declare global {
       saveSession: (session: SessionState) => Promise<void>;
       loadFlows: () => Promise<Flow[]>;
       saveFlows: (flows: Flow[]) => Promise<void>;
+      // Generators
+      loadGeneratorConfig: () => Promise<GeneratorConfig | null>;
+      saveGeneratorConfig: (config: GeneratorConfig) => Promise<void>;
+      removeGeneratorConfig: () => Promise<void>;
+      generatorsBuild: (projectDir: string) => Promise<{ success: boolean; error?: string; logs: string }>;
+      generatorsStart: (config: GeneratorConfig) => Promise<{ success: boolean; error?: string; logs: string }>;
+      generatorsStop: (containerName: string) => Promise<void>;
+      generatorsLogs: (containerName: string) => Promise<string>;
+      generatorsHealth: (port: number) => Promise<boolean>;
+      generatorsList: (port: number) => Promise<GeneratorInfo[]>;
+      generatorsInvoke: (port: number, name: string) => Promise<string>;
+      selectDirectory: () => Promise<string | null>;
     };
   }
 }

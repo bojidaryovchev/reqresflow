@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import { execFile } from "node:child_process";
 import started from "electron-squirrel-startup";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -210,6 +211,201 @@ ipcMain.handle(
     }
   },
 );
+
+// ── IPC: Generators ──
+function getGeneratorConfigPath(): string {
+  return path.join(getDataDir(), "generator-config.json");
+}
+
+ipcMain.handle("generators:load-config", () => {
+  const filePath = getGeneratorConfigPath();
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle("generators:save-config", (_event, config: unknown) => {
+  try {
+    fs.writeFileSync(
+      getGeneratorConfigPath(),
+      JSON.stringify(config, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    console.error("Failed to save generator config:", err);
+  }
+});
+
+ipcMain.handle("generators:remove-config", () => {
+  const filePath = getGeneratorConfigPath();
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+});
+
+function dockerExec(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile("docker", args, { timeout: 60_000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr || err.message));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
+}
+
+ipcMain.handle(
+  "generators:build",
+  async (_event, projectDir: string) => {
+    try {
+      // Validate the directory exists and has a Dockerfile
+      if (!fs.existsSync(path.join(projectDir, "Dockerfile"))) {
+        return { success: false, error: "No Dockerfile found in project directory", logs: "" };
+      }
+      return new Promise<{ success: boolean; error?: string; logs: string }>(
+        (resolve) => {
+          execFile(
+            "docker",
+            ["build", "-t", "reqresflow-generators", projectDir],
+            { timeout: 120_000, maxBuffer: 1024 * 1024 },
+            (err, stdout, stderr) => {
+              const logs = (stdout + stderr).trim();
+              if (err) {
+                resolve({ success: false, error: err.message, logs });
+              } else {
+                resolve({ success: true, logs });
+              }
+            },
+          );
+        },
+      );
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        logs: "",
+      };
+    }
+  },
+);
+
+ipcMain.handle(
+  "generators:start",
+  async (
+    _event,
+    config: { projectDir: string; containerName: string; port: number },
+  ) => {
+    try {
+      // Stop existing container if running
+      try {
+        await dockerExec(["rm", "-f", config.containerName]);
+      } catch {
+        // Ignore — container may not exist
+      }
+
+      const generatorsDir = path.join(config.projectDir, "generators");
+      const mountArgs = fs.existsSync(generatorsDir)
+        ? ["-v", `${generatorsDir}:/app/generators:ro`]
+        : [];
+
+      const output = await dockerExec([
+        "run",
+        "-d",
+        "--name",
+        config.containerName,
+        "-p",
+        `${config.port}:7890`,
+        ...mountArgs,
+        "reqresflow-generators",
+      ]);
+      return { success: true, logs: output };
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        logs: "",
+      };
+    }
+  },
+);
+
+ipcMain.handle(
+  "generators:stop",
+  async (_event, containerName: string) => {
+    try {
+      await dockerExec(["rm", "-f", containerName]);
+    } catch {
+      // Ignore errors if container doesn't exist
+    }
+  },
+);
+
+ipcMain.handle(
+  "generators:logs",
+  async (_event, containerName: string) => {
+    return new Promise<string>((resolve) => {
+      execFile(
+        "docker",
+        ["logs", "--tail", "200", containerName],
+        { timeout: 10_000 },
+        (_err, stdout, stderr) => {
+          // docker logs sends container stdout to stdout and container stderr to stderr
+          resolve((stdout + stderr).trim());
+        },
+      );
+    });
+  },
+);
+
+ipcMain.handle("generators:health", async (_event, port: number) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle("generators:list", async (_event, port: number) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/list`);
+    if (!response.ok) return [];
+    return await response.json();
+  } catch {
+    return [];
+  }
+});
+
+ipcMain.handle(
+  "generators:invoke",
+  async (_event, port: number, name: string) => {
+    const response = await fetch(`http://127.0.0.1:${port}/invoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Generator "${name}" failed: ${text}`);
+    }
+    const data = await response.json();
+    return String(data.value);
+  },
+);
+
+ipcMain.handle("dialog:select-directory", async () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (!win) return null;
+  const result = await dialog.showOpenDialog(win, {
+    properties: ["openDirectory"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
 
 const createWindow = () => {
   // Create the browser window.

@@ -149,7 +149,7 @@ const envVarMark = Decoration.mark({ class: "cm-env-var" });
 
 function buildEnvVarDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  const regex = /\{\{\w+\}\}/g;
+  const regex = /\{\{[\w$]+\}\}/g;
   for (const { from, to } of view.visibleRanges) {
     const text = view.state.doc.sliceString(from, to);
     let match: RegExpExecArray | null;
@@ -181,7 +181,7 @@ export const envVarHighlightPlugin = ViewPlugin.fromClass(
 
 export function envVarCompletion(variables: { key: string; value: string }[]) {
   return (context: CompletionContext) => {
-    const before = context.matchBefore(/\{\{\w*/);
+    const before = context.matchBefore(/\{\{[\w$]*/);
     if (!before) return null;
     return {
       from: before.from + 2,
@@ -211,7 +211,7 @@ export function envVarHoverTooltip(
   return hoverTooltip((view: EditorView, pos: number): Tooltip | null => {
     const line = view.state.doc.lineAt(pos);
     const lineText = line.text;
-    const regex = /\{\{(\w+)\}\}/g;
+    const regex = /\{\{([\w$]+)\}\}/g;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(lineText)) !== null) {
       const from = line.from + match.index;

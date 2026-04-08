@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   BodyType,
   Environment,
+  GeneratorConfig,
   HistoryEntry,
   Payload,
   RawLanguage,
@@ -12,6 +13,7 @@ import {
 import { generateId } from "../utils/helpers";
 import { buildRequestConfig } from "../utils/request-builder";
 import { extractCaptures } from "../utils/captures";
+import { resolveGenerators } from "../utils/generators";
 
 interface ResponseData {
   status: number;
@@ -37,6 +39,7 @@ interface UseSendRequestDeps {
   activePayload: Payload | null;
   body: string;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  generatorConfig: GeneratorConfig | null;
 }
 
 export function useSendRequest({
@@ -54,6 +57,7 @@ export function useSendRequest({
   activePayload,
   body,
   setLoading,
+  generatorConfig,
 }: UseSendRequestDeps) {
   const pendingSendRef = useRef<string | null>(null);
 
@@ -244,6 +248,23 @@ export function useSendRequest({
 
     const vars = activeEnv?.variables || [];
 
+    // Resolve generator placeholders into virtual env vars
+    const substitutableFields = [
+      activeTab.url,
+      ...activeTab.params
+        .filter((p) => p.enabled)
+        .flatMap((p) => [p.key, p.value]),
+      ...activeTab.headers
+        .filter((h) => h.enabled)
+        .flatMap((h) => [h.key, h.value]),
+      body,
+    ];
+    const generatorVars = await resolveGenerators(
+      substitutableFields,
+      generatorConfig,
+    );
+    const allVars = [...vars, ...generatorVars];
+
     const built = buildRequestConfig({
       method: activeTab.method,
       url: activeTab.url,
@@ -254,7 +275,7 @@ export function useSendRequest({
       rawLanguage: activeTab.rawLanguage,
       rawBody: body,
       payload: activePayload,
-      vars,
+      vars: allVars,
     });
 
     try {
@@ -300,6 +321,7 @@ export function useSendRequest({
     getCurrentRequest,
     updateTab,
     applyCaptures,
+    generatorConfig,
   ]);
 
   // Auto-send when a variant run was triggered

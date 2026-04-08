@@ -33,11 +33,12 @@ export function detectResponseLanguage(response: {
 }
 
 // Replace {{variable}} placeholders with environment values
+// Supports both {{varName}} for env vars and {{$generatorName}} for generators
 export function substituteVars(
   text: string,
   variables: { key: string; value: string }[],
 ): string {
-  return text.replace(/\{\{(\w+)\}\}/g, (match, name) => {
+  return text.replace(/\{\{([\w$]+)\}\}/g, (match, name) => {
     const found = variables.find((v) => v.key === name);
     return found ? found.value : match;
   });

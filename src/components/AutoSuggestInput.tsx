@@ -216,7 +216,7 @@ const AutoSuggestInput: React.FC<AutoSuggestInputProps> = ({
   // Build highlighted segments for the overlay
   const highlightedParts = React.useMemo(() => {
     const parts: { text: string; isVar: boolean }[] = [];
-    const regex = /\{\{\w+\}\}/g;
+    const regex = /\{\{[\w$]+\}\}/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(value)) !== null) {
