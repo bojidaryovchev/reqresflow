@@ -49,16 +49,17 @@ test.describe("App Launch", () => {
     await expect(urlInput).toHaveValue("");
   });
 
-  test("sidebar is visible with Collections, Flows, and History tabs", async () => {
+  test("sidebar is visible with Collections, Flows, History and Generators tabs", async () => {
     await expect(page.locator(S.sidebar)).toBeVisible();
 
     const sectionTabs = page.locator(S.sidebarSectionTab);
-    await expect(sectionTabs).toHaveCount(3);
+    await expect(sectionTabs).toHaveCount(4);
 
     const tabTexts = await sectionTabs.allTextContents();
     expect(tabTexts.some((t) => t.includes("Collections"))).toBe(true);
     expect(tabTexts.some((t) => t.includes("Flows"))).toBe(true);
     expect(tabTexts.some((t) => t.includes("History"))).toBe(true);
+    expect(tabTexts.some((t) => t.includes("Generators"))).toBe(true);
   });
 
   test("request panel defaults to Params tab, response shows empty state", async () => {

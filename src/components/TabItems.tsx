@@ -4,7 +4,7 @@ import { type HttpMethod, METHOD_COLORS } from "../utils/http";
 import { getTabDisplayName } from "../utils/request";
 import { RequestTab as RequestTabType, FlowTab } from "../types/electron";
 
-interface BaseTabItemProps<T> {
+interface BaseTabItemProps<T extends { id: string }> {
   tab: T;
   isActive: boolean;
   onActivate: () => void;
@@ -13,7 +13,7 @@ interface BaseTabItemProps<T> {
   children: React.ReactNode;
 }
 
-function BaseTabItem<T>({
+function BaseTabItem<T extends { id: string }>({
   tab,
   isActive,
   onActivate,
@@ -27,7 +27,7 @@ function BaseTabItem<T>({
     <Reorder.Item
       as="div"
       value={tab}
-      id={(tab as any).id}
+      id={tab.id}
       dragListener={false}
       dragControls={controls}
       className={`request-tab-item ${isActive ? "active" : ""}`}

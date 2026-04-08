@@ -65,12 +65,12 @@ const GeneratorsSection: React.FC<GeneratorsSectionProps> = ({
     const willShow = !showLogs;
     setShowLogs(willShow);
     if (willShow) {
-      onFetchLogs().catch(() => {});
+      onFetchLogs().catch(() => { /* ignored */ });
     }
   };
 
   const handleRefreshLogs = () => {
-    onFetchLogs().catch(() => {});
+    onFetchLogs().catch(() => { /* ignored */ });
   };
 
   // Auto-scroll logs to bottom
