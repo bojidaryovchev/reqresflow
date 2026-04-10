@@ -152,11 +152,39 @@ export const S = {
 
   // ── History ──
   historyItem: ".history-item",
+  historyItemSelected: ".history-item.selected",
   historyItemTop: ".history-item-top",
   historyStatus: ".history-status",
   historyTime: ".history-time",
   historyItemUrl: ".history-item-url",
   historyBadge: ".history-badge",
+
+  // ── History Detail Panel ──
+  historyDetailPanel: ".history-detail-panel",
+  historyDetailMethod: ".history-detail-method",
+  historyDetailUrl: ".history-detail-url",
+  historyDetailStatus: ".history-detail-status",
+  historyDetailClose: ".history-detail-close",
+  historyDetailMeta: ".history-detail-meta",
+  historyDetailMetaItem: ".history-detail-meta-item",
+  historyDetailTab: ".history-detail-tab",
+  historyDetailTabActive: ".history-detail-tab.active",
+  historyDetailBody: ".history-detail-body",
+  historyDetailActions: ".history-detail-actions",
+  historyDetailActionBtn: ".history-detail-action-btn",
+  historyDetailUnavailable: ".history-detail-unavailable",
+  historyDetailBadge: ".history-detail-badge",
+
+  // ── Shared Step Detail Content (used inside history detail and flow runner) ──
+  stepDetailContent: ".flow-runner-detail-content",
+  stepResponseMeta: ".flow-runner-response-meta",
+  stepResponseStatus: ".flow-runner-status",
+  stepResponseBody: ".flow-runner-response-body",
+  stepResponseHeaders: ".flow-runner-response-headers",
+  stepRequestLine: ".flow-runner-request-line",
+  stepRequestUrl: ".flow-runner-request-url",
+  stepCapturesTable: ".flow-runner-captures-table",
+  stepDetailEmpty: ".flow-runner-detail-empty",
 
   // ── Flows (sidebar) ──
   flowItem: ".flow-item",

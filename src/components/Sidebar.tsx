@@ -48,6 +48,7 @@ interface SidebarProps {
   onRequestPanelChange: (panel: string) => void;
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
+  selectedHistoryId: string | null;
   activeFlowId: string | null;
   // Generators
   generatorConfig: GeneratorConfig | null;
@@ -91,6 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRequestPanelChange,
   activeSection,
   onSectionChange,
+  selectedHistoryId,
   activeFlowId,
   generatorConfig,
   generators,
@@ -285,6 +287,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           history={history}
           onLoadHistory={onLoadHistory}
           onClearHistory={onClearHistory}
+          selectedHistoryId={selectedHistoryId}
         />
       )}
 

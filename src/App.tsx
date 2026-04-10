@@ -1,8 +1,15 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Reorder } from "motion/react";
 import EnvManager from "./components/EnvManager";
 import EnvironmentBar from "./components/EnvironmentBar";
 import FlowTabContent from "./components/FlowTabContent";
+import HistoryDetailPanel from "./components/HistoryDetailPanel";
 import RequestPanelSection, {
   type RequestPanel,
 } from "./components/RequestPanelSection";
@@ -19,6 +26,7 @@ import { useFlowExecution } from "./hooks/useFlowExecution";
 import { useFlowTabs } from "./hooks/useFlowTabs";
 import { useGenerators } from "./hooks/useGenerators";
 import { useHistory } from "./hooks/useHistory";
+import { HistoryEntry } from "./types/electron";
 import { usePayloads } from "./hooks/usePayloads";
 import { useSaveToCollection } from "./hooks/useSaveToCollection";
 import { useSendRequest } from "./hooks/useSendRequest";
@@ -91,6 +99,14 @@ const App: React.FC = () => {
   const [sidebarSection, setSidebarSection] =
     useState<SidebarSection>("collections");
 
+  // History detail
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
+    null,
+  );
+
+  // Auto-send after Replay Exact loads a history entry
+  const autoSendPendingRef = useRef(false);
+
   // Flows & flow tabs
   const {
     flows,
@@ -161,6 +177,9 @@ const App: React.FC = () => {
   // Handle sidebar section switching
   const handleSectionChange = useCallback((section: SidebarSection) => {
     setSidebarSection(section);
+    if (section !== "history") {
+      setSelectedHistoryId(null);
+    }
   }, []);
 
   // Payload & capture helpers
@@ -214,6 +233,14 @@ const App: React.FC = () => {
     setTabs,
     getCurrentRequest,
   });
+
+  // Auto-send effect: fires after Replay Exact loads the tab
+  useEffect(() => {
+    if (autoSendPendingRef.current && activeTab && activeTab.url.trim()) {
+      autoSendPendingRef.current = false;
+      sendRequest();
+    }
+  }, [activeTab?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rename active request and sync with collection if linked
   const renameActiveRequest = useCallback(
@@ -297,8 +324,14 @@ const App: React.FC = () => {
         onLoadRequest={loadRequest}
         onSaveRequest={getCurrentRequest}
         history={history}
-        onLoadHistory={loadHistoryEntry}
-        onClearHistory={clearHistory}
+        onLoadHistory={(entry: HistoryEntry) => {
+          setSelectedHistoryId(entry.id);
+          setSidebarSection("history");
+        }}
+        onClearHistory={() => {
+          clearHistory();
+          setSelectedHistoryId(null);
+        }}
         activeCollectionId={activeTab?.savedToCollectionId ?? null}
         activeRequestId={activeTab?.savedRequestId ?? null}
         flows={flows}
@@ -312,6 +345,7 @@ const App: React.FC = () => {
         onRequestPanelChange={(p: string) => setRequestPanel(p as RequestPanel)}
         activeSection={sidebarSection}
         onSectionChange={handleSectionChange}
+        selectedHistoryId={selectedHistoryId}
         activeFlowId={
           flowTabs.find((ft) => ft.id === activeFlowTabId)?.flowId ?? null
         }
@@ -448,83 +482,117 @@ const App: React.FC = () => {
               />
             )}
 
-            {!activeTab && (
-              <div className="empty-state">
-                <div className="empty-state-icon">↗</div>
-                <div className="empty-state-title">No open requests</div>
-                <div className="empty-state-hint">
-                  Open a request from a collection, history, or create a new tab
-                  with the + button above.
-                </div>
-              </div>
-            )}
+            {/* History Detail Panel */}
+            {sidebarSection === "history" &&
+              selectedHistoryId &&
+              (() => {
+                const selectedEntry = history.find(
+                  (h) => h.id === selectedHistoryId,
+                );
+                if (!selectedEntry) return null;
+                return (
+                  <HistoryDetailPanel
+                    entry={selectedEntry}
+                    onReplayExact={() => {
+                      loadHistoryEntry(selectedEntry);
+                      autoSendPendingRef.current = true;
+                      setSelectedHistoryId(null);
+                      setSidebarSection("collections");
+                    }}
+                    onReplayAsNew={() => {
+                      loadRequest(selectedEntry.request);
+                      setSelectedHistoryId(null);
+                      setSidebarSection("collections");
+                    }}
+                    onClose={() => setSelectedHistoryId(null)}
+                  />
+                );
+              })()}
 
-            {activeTab && (
+            {/* Normal request editing (hidden when viewing history detail) */}
+            {!(sidebarSection === "history" && selectedHistoryId) && (
               <>
-                {/* Environment Bar */}
-                <EnvironmentBar
-                  requestName={activeTab.name}
-                  environments={environments}
-                  activeEnvId={activeEnvId}
-                  onRename={renameActiveRequest}
-                  onEnvChange={setActiveEnvId}
-                  onManageEnvs={() => setShowEnvManager(true)}
-                />
+                {!activeTab && (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">↗</div>
+                    <div className="empty-state-title">No open requests</div>
+                    <div className="empty-state-hint">
+                      Open a request from a collection, history, or create a new
+                      tab with the + button above.
+                    </div>
+                  </div>
+                )}
 
-                {/* URL Bar */}
-                <UrlBar
-                  method={activeTab.method}
-                  url={activeTab.url}
-                  loading={loading}
-                  isDirty={activeTab.isDirty}
-                  savedRequestId={activeTab.savedRequestId}
-                  envVariables={allVariables}
-                  envName={activeEnv?.name}
-                  onMethodChange={(method) =>
-                    updateTab(activeTab.id, { method })
-                  }
-                  onUrlChange={(v) => {
-                    const parsed = parseQueryParams(v);
-                    const params =
-                      parsed.length > 0
-                        ? [...parsed, { enabled: true, key: "", value: "" }]
-                        : [{ enabled: true, key: "", value: "" }];
-                    updateTab(activeTab.id, { url: v, params });
-                  }}
-                  onSend={sendRequest}
-                  onSave={saveRequestToCollection}
-                  onKeyDown={handleKeyDown}
-                />
+                {activeTab && (
+                  <>
+                    {/* Environment Bar */}
+                    <EnvironmentBar
+                      requestName={activeTab.name}
+                      environments={environments}
+                      activeEnvId={activeEnvId}
+                      onRename={renameActiveRequest}
+                      onEnvChange={setActiveEnvId}
+                      onManageEnvs={() => setShowEnvManager(true)}
+                    />
 
-                <div className="request-response">
-                  {/* Request Section */}
-                  <RequestPanelSection
-                    activeTab={activeTab}
-                    requestPanel={requestPanel}
-                    onRequestPanelChange={setRequestPanel}
-                    envVariables={allVariables}
-                    envName={activeEnv?.name}
-                    onUpdateTab={(updates) => updateTab(activeTab.id, updates)}
-                    activePayload={activePayload}
-                    body={body}
-                    onAddPayload={addPayload}
-                    onRemovePayload={removePayload}
-                    onRenamePayload={renamePayload}
-                    onUpdatePayloadBody={updatePayloadBody}
-                    activeEnvId={activeEnvId}
-                    onAddCapture={addCapture}
-                    onUpdateCapture={updateCapture}
-                    onRemoveCapture={removeCapture}
-                  />
+                    {/* URL Bar */}
+                    <UrlBar
+                      method={activeTab.method}
+                      url={activeTab.url}
+                      loading={loading}
+                      isDirty={activeTab.isDirty}
+                      savedRequestId={activeTab.savedRequestId}
+                      envVariables={allVariables}
+                      envName={activeEnv?.name}
+                      onMethodChange={(method) =>
+                        updateTab(activeTab.id, { method })
+                      }
+                      onUrlChange={(v) => {
+                        const parsed = parseQueryParams(v);
+                        const params =
+                          parsed.length > 0
+                            ? [...parsed, { enabled: true, key: "", value: "" }]
+                            : [{ enabled: true, key: "", value: "" }];
+                        updateTab(activeTab.id, { url: v, params });
+                      }}
+                      onSend={sendRequest}
+                      onSave={saveRequestToCollection}
+                      onKeyDown={handleKeyDown}
+                    />
 
-                  {/* Response Section */}
-                  <ResponsePanelComponent
-                    response={response}
-                    error={error}
-                    responsePanel={responsePanel}
-                    onPanelChange={setResponsePanel}
-                  />
-                </div>
+                    <div className="request-response">
+                      {/* Request Section */}
+                      <RequestPanelSection
+                        activeTab={activeTab}
+                        requestPanel={requestPanel}
+                        onRequestPanelChange={setRequestPanel}
+                        envVariables={allVariables}
+                        envName={activeEnv?.name}
+                        onUpdateTab={(updates) =>
+                          updateTab(activeTab.id, updates)
+                        }
+                        activePayload={activePayload}
+                        body={body}
+                        onAddPayload={addPayload}
+                        onRemovePayload={removePayload}
+                        onRenamePayload={renamePayload}
+                        onUpdatePayloadBody={updatePayloadBody}
+                        activeEnvId={activeEnvId}
+                        onAddCapture={addCapture}
+                        onUpdateCapture={updateCapture}
+                        onRemoveCapture={removeCapture}
+                      />
+
+                      {/* Response Section */}
+                      <ResponsePanelComponent
+                        response={response}
+                        error={error}
+                        responsePanel={responsePanel}
+                        onPanelChange={setResponsePanel}
+                      />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </>

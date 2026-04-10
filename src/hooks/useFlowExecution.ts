@@ -178,6 +178,7 @@ export function useFlowExecution({
             time: detail.response.time,
             request: mergedReq,
             flowName: flow.name,
+            execution: detail,
           };
           setHistory((prev) => {
             const updated = [historyEntry, ...prev].slice(0, 100);

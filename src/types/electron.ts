@@ -108,6 +108,7 @@ export interface HistoryEntry {
   time: number;
   request: SavedRequest;
   flowName?: string;
+  execution?: FlowStepExecutionDetail | null;
 }
 
 export interface FlowStep {

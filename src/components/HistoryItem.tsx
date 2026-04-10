@@ -16,11 +16,19 @@ const formatTimestamp = (ts: number): string => {
 
 interface HistoryItemProps {
   entry: HistoryEntry;
+  isSelected: boolean;
   onClick: () => void;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ entry, onClick }) => (
-  <div className="history-item" onClick={onClick}>
+const HistoryItem: React.FC<HistoryItemProps> = ({
+  entry,
+  isSelected,
+  onClick,
+}) => (
+  <div
+    className={`history-item${isSelected ? " selected" : ""}`}
+    onClick={onClick}
+  >
     <div className="history-item-top">
       <span
         className="request-method-badge"
@@ -31,11 +39,13 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ entry, onClick }) => (
         {entry.method}
       </span>
       <span
-        className={`history-status ${entry.status >= 200 && entry.status < 300 ? "success" : entry.status >= 400 ? "error" : ""}`}
+        className={`history-status ${entry.status >= 200 && entry.status < 300 ? "success" : entry.status >= 400 || entry.status === 0 ? "error" : ""}`}
       >
-        {entry.status}
+        {entry.status === 0 ? "ERR" : entry.status}
       </span>
-      <span className="history-time">{entry.time}ms</span>
+      <span className="history-time">
+        {entry.time > 0 ? `${entry.time}ms` : "—"}
+      </span>
     </div>
     <div className="history-item-url">{entry.url}</div>
     <div className="history-item-timestamp">

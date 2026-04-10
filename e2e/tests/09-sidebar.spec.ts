@@ -289,11 +289,10 @@ test.describe("Sidebar Actions", () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test("clicking history item loads it into a tab", async () => {
-    const tabsBefore = await actPage.locator(S.tabItem).count();
+  test("clicking history item shows detail panel", async () => {
     await actPage.locator(S.historyItem).first().click();
-    const tabsAfter = await actPage.locator(S.tabItem).count();
-    expect(tabsAfter).toBe(tabsBefore + 1);
+    await expect(actPage.locator(S.historyDetailPanel)).toBeVisible();
+    await expect(actPage.locator(S.historyItemSelected)).toHaveCount(1);
   });
 });
 

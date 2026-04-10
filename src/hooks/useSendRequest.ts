@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   BodyType,
   Environment,
+  FlowStepExecutionDetail,
   GeneratorConfig,
   HistoryEntry,
   Payload,
@@ -291,6 +292,29 @@ export function useSendRequest({
       // Apply response captures to environment
       applyCaptures(result, activeTab.captures);
 
+      // Build execution detail with captured values
+      const enabledCaptures = activeTab.captures.filter(
+        (c) => c.enabled && c.varName.trim(),
+      );
+      const capturedValues =
+        enabledCaptures.length > 0 && activeEnvId
+          ? extractCaptures(
+              result,
+              activeTab.captures,
+              activeEnv?.variables || [],
+            ).capturedValues
+          : [];
+
+      const execution: FlowStepExecutionDetail = {
+        resolvedUrl: built.fullUrl,
+        resolvedMethod: activeTab.method,
+        resolvedHeaders: { ...built.headers },
+        resolvedBody: built.body,
+        response: result,
+        error: null,
+        capturedValues,
+      };
+
       // Add to history
       const entry: HistoryEntry = {
         id: generateId(),
@@ -301,14 +325,41 @@ export function useSendRequest({
         statusText: result.statusText,
         time: result.time,
         request: getCurrentRequest(),
+        execution,
       };
       const updatedHistory = [entry, ...history].slice(0, 100);
       setHistory(updatedHistory);
       window.electronAPI.saveHistory(updatedHistory);
     } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       updateTab(activeTab.id, {
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMsg,
       });
+
+      // Record failed requests in history too
+      const execution: FlowStepExecutionDetail = {
+        resolvedUrl: built.fullUrl,
+        resolvedMethod: activeTab.method,
+        resolvedHeaders: { ...built.headers },
+        resolvedBody: built.body,
+        response: null,
+        error: errorMsg,
+        capturedValues: [],
+      };
+      const entry: HistoryEntry = {
+        id: generateId(),
+        timestamp: Date.now(),
+        method: activeTab.method,
+        url: activeTab.url.trim(),
+        status: 0,
+        statusText: "Error",
+        time: 0,
+        request: getCurrentRequest(),
+        execution,
+      };
+      const updatedHistory = [entry, ...history].slice(0, 100);
+      setHistory(updatedHistory);
+      window.electronAPI.saveHistory(updatedHistory);
     } finally {
       setLoading(false);
     }

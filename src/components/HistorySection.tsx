@@ -6,12 +6,14 @@ interface HistorySectionProps {
   history: HistoryEntry[];
   onLoadHistory: (entry: HistoryEntry) => void;
   onClearHistory: () => void;
+  selectedHistoryId: string | null;
 }
 
 const HistorySection: React.FC<HistorySectionProps> = ({
   history,
   onLoadHistory,
   onClearHistory,
+  selectedHistoryId,
 }) => (
   <>
     <div className="sidebar-header">
@@ -38,6 +40,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         <HistoryItem
           key={entry.id}
           entry={entry}
+          isSelected={entry.id === selectedHistoryId}
           onClick={() => onLoadHistory(entry)}
         />
       ))}
