@@ -142,6 +142,7 @@ export function useFlowExecution({
 
         const mergedReq: SavedRequest = {
           ...req,
+          ...(step.payloadId ? { activePayloadId: step.payloadId } : {}),
           captures: [...(req.captures || []), ...step.captures],
         };
 

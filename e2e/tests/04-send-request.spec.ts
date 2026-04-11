@@ -432,5 +432,42 @@ test.describe("Response Toolbar", () => {
   });
 });
 
+// ── Response Resize Handle ────────────────────────────────────────────
+
+test.describe("Response Panel Resize", () => {
+  test("response resize handle is visible and draggable", async () => {
+    await page.click(S.tabAdd);
+    await typeUrl(page, TEST_URLS.json);
+    await sendRequest(page);
+
+    const handle = page.locator(S.responseResizeHandle);
+    await expect(handle).toBeVisible();
+
+    const requestSection = page.locator(".request-section");
+    const beforeBox = await requestSection.boundingBox();
+    expect(beforeBox).toBeTruthy();
+
+    const handleBox = await handle.boundingBox();
+    expect(handleBox).toBeTruthy();
+
+    // Drag the resize handle downward by 80px to make the request section taller
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + 80,
+      { steps: 5 },
+    );
+    await page.mouse.up();
+
+    const afterBox = await requestSection.boundingBox();
+    expect(afterBox).toBeTruthy();
+    expect(afterBox!.height).toBeGreaterThan(beforeBox!.height);
+  });
+});
+
 // NOTE: HEAD and OPTIONS are not in the app's method dropdown
 // (only GET, POST, PUT, PATCH, DELETE are supported)

@@ -41,3 +41,11 @@ Payload variants let you save multiple versions of a request body for the same r
 2. The variants are listed below the request name when expanded.
 3. Click on a variant name to open the request with that variant selected (and switch to the body tab).
 4. Click the **▶** (play) button on a variant to open the request with that variant AND immediately send it.
+
+## Use a Variant in a Flow Step
+
+1. Add a request with multiple variants as a step in a flow.
+2. Click the step to expand its details.
+3. A **Payload Variant** dropdown appears listing all available variants.
+4. By default it uses the request's active payload. Select a specific variant to override.
+5. This lets you run the same request with different bodies at different points in a flow.

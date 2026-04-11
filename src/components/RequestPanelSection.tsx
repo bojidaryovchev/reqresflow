@@ -26,6 +26,7 @@ interface RequestPanelSectionProps {
   onAddCapture: () => void;
   onUpdateCapture: (id: string, updates: Partial<ResponseCapture>) => void;
   onRemoveCapture: (id: string) => void;
+  style?: React.CSSProperties;
 }
 
 const RequestPanelSection: React.FC<RequestPanelSectionProps> = ({
@@ -45,8 +46,9 @@ const RequestPanelSection: React.FC<RequestPanelSectionProps> = ({
   onAddCapture,
   onUpdateCapture,
   onRemoveCapture,
+  style,
 }) => (
-  <div className="request-section">
+  <div className="request-section" style={style}>
     <div className="tabs">
       {(
         ["params", "headers", "body", "auth", "captures"] as RequestPanel[]

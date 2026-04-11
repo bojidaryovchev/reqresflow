@@ -115,6 +115,7 @@ export interface FlowStep {
   id: string;
   collectionId: string;
   requestId: string;
+  payloadId?: string | null;
   captures: ResponseCapture[];
   continueOnError: boolean;
 }

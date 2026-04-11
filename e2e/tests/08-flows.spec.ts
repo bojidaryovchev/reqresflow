@@ -396,6 +396,35 @@ test.describe("Flow Advanced Features", () => {
     expect(count).toBeGreaterThanOrEqual(2);
   });
 
+  test("last run resize handle is visible and draggable", async () => {
+    const resizeHandle = advPage.locator(S.flowEditorLastRunResizeHandle);
+    await expect(resizeHandle).toBeVisible();
+
+    const lastRun = advPage.locator(S.flowEditorLastRun);
+    const beforeBox = await lastRun.boundingBox();
+    expect(beforeBox).toBeTruthy();
+
+    const handleBox = await resizeHandle.boundingBox();
+    expect(handleBox).toBeTruthy();
+
+    // Drag the resize handle upward by 80px to make the panel taller
+    await advPage.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
+    await advPage.mouse.down();
+    await advPage.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y - 80,
+      { steps: 5 },
+    );
+    await advPage.mouse.up();
+
+    const afterBox = await lastRun.boundingBox();
+    expect(afterBox).toBeTruthy();
+    expect(afterBox!.height).toBeGreaterThan(beforeBox!.height);
+  });
+
   test("step capture value stored in environment after flow run", async () => {
     await clickSidebarTab(advPage, "Collections");
     await advPage.click(S.tabAdd);
@@ -717,5 +746,245 @@ test.describe("Flow Abort", () => {
       .locator(S.flowRunnerSummary)
       .textContent();
     expect(summaryText).toMatch(/skipped|aborted/i);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Section 6 — Flow Step Payload Variant Selection
+// ═══════════════════════════════════════════════════════════════════════
+
+test.describe("Flow Step Payload Variant", () => {
+  let pvPage: Page;
+
+  test.beforeAll(async () => {
+    ({ page: pvPage } = await launchApp({ createTab: false }));
+
+    // Create a request with multiple payload variants
+    const reqWithPayloads = makeRequest({
+      id: "req-payloads",
+      name: "Multi Payload Req",
+      method: "POST",
+      url: TEST_URLS.post,
+      bodyType: "raw",
+      rawLanguage: "json",
+      body: '{"default":true}',
+      payloads: [
+        {
+          id: "payload-1",
+          name: "Default",
+          body: '{"default":true}',
+          bodyType: "raw",
+          rawLanguage: "json",
+          formData: [],
+          graphql: { query: "", variables: "" },
+          binaryFilePath: "",
+        },
+        {
+          id: "payload-2",
+          name: "Variant A",
+          body: '{"variant":"A"}',
+          bodyType: "raw",
+          rawLanguage: "json",
+          formData: [],
+          graphql: { query: "", variables: "" },
+          binaryFilePath: "",
+        },
+        {
+          id: "payload-3",
+          name: "Variant B",
+          body: '{"variant":"B"}',
+          bodyType: "raw",
+          rawLanguage: "json",
+          formData: [],
+          graphql: { query: "", variables: "" },
+          binaryFilePath: "",
+        },
+      ],
+      activePayloadId: "payload-1",
+    });
+
+    // Also a request with no payloads (single body)
+    const reqNoPayloads = makeRequest({
+      id: "req-no-payloads",
+      name: "Single Body Req",
+      method: "GET",
+      url: TEST_URLS.json,
+    });
+
+    const col = makeCollection({
+      id: "col-payload-test",
+      name: "Payload Test Col",
+      requests: [reqWithPayloads, reqNoPayloads],
+    });
+
+    const flow = makeFlow({
+      id: "flow-payload-test",
+      name: "Payload Flow",
+      steps: [
+        {
+          id: "step-pv-1",
+          collectionId: "col-payload-test",
+          requestId: "req-payloads",
+          continueOnError: false,
+          captures: [],
+        },
+        {
+          id: "step-pv-2",
+          collectionId: "col-payload-test",
+          requestId: "req-no-payloads",
+          continueOnError: false,
+          captures: [],
+        },
+      ],
+    });
+
+    seedData("collections.json", [col]);
+    seedData("flows.json", [flow]);
+    ({ page: pvPage } = await restartApp());
+  });
+
+  test.afterAll(async () => {
+    await closeApp();
+  });
+
+  test("open flow and expand step with payloads", async () => {
+    await clickSidebarTab(pvPage, "Flows");
+    const flowItem = pvPage
+      .locator(S.flowItem)
+      .filter({ hasText: "Payload Flow" });
+    await flowItem.locator(S.flowItemHeader).click();
+    await expect(pvPage.locator(S.flowEditor)).toBeVisible();
+
+    // Expand first step (has payloads)
+    await pvPage
+      .locator(`${S.flowStep}:first-child ${S.flowStepHeader}`)
+      .click();
+    await expect(
+      pvPage.locator(`${S.flowStep}:first-child ${S.flowStepDetail}`),
+    ).toBeVisible();
+  });
+
+  test("payload variant dropdown visible for request with multiple payloads", async () => {
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    await expect(payloadSelect).toBeVisible();
+  });
+
+  test("payload dropdown defaults to empty (request's active payload)", async () => {
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    const value = await payloadSelect.inputValue();
+    expect(value).toBe("");
+  });
+
+  test("payload dropdown lists all variants", async () => {
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    const options = payloadSelect.locator("option");
+    // 1 default option + 3 payload variants = 4
+    await expect(options).toHaveCount(4);
+
+    const texts = await options.allTextContents();
+    expect(texts[0]).toContain("Default (request's active payload)");
+    expect(texts).toContain("Default");
+    expect(texts).toContain("Variant A");
+    expect(texts).toContain("Variant B");
+  });
+
+  test("select a specific payload variant", async () => {
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    await payloadSelect.selectOption({ label: "Variant A" });
+    const value = await payloadSelect.inputValue();
+    expect(value).toBe("payload-2");
+  });
+
+  test("changing payload variant marks flow tab as dirty", async () => {
+    await expect(
+      pvPage.locator(`${S.tabItemActive} ${S.tabDirty}`),
+    ).toBeVisible();
+  });
+
+  test("payload dropdown hidden for step with request without payloads", async () => {
+    // Collapse first step
+    await pvPage
+      .locator(`${S.flowStep}:first-child ${S.flowStepHeader}`)
+      .click();
+
+    // Expand second step (no payloads)
+    await pvPage
+      .locator(`${S.flowStep}:nth-child(2) ${S.flowStepHeader}`)
+      .click();
+    await expect(
+      pvPage.locator(`${S.flowStep}:nth-child(2) ${S.flowStepDetail}`),
+    ).toBeVisible();
+
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:nth-child(2) ${S.flowStepPayloadSelect}`,
+    );
+    await expect(payloadSelect).toHaveCount(0);
+  });
+
+  test("reset payload variant back to default", async () => {
+    // Collapse second step, expand first
+    await pvPage
+      .locator(`${S.flowStep}:nth-child(2) ${S.flowStepHeader}`)
+      .click();
+    await pvPage
+      .locator(`${S.flowStep}:first-child ${S.flowStepHeader}`)
+      .click();
+
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    await payloadSelect.selectOption({ value: "" });
+    const value = await payloadSelect.inputValue();
+    expect(value).toBe("");
+  });
+
+  test("save and run flow with payload variant selected", async () => {
+    const payloadSelect = pvPage.locator(
+      `${S.flowStep}:first-child ${S.flowStepPayloadSelect}`,
+    );
+    await payloadSelect.selectOption({ label: "Variant A" });
+
+    await pvPage.click(
+      `${S.flowEditorActions} ${S.flowEditorBtnSecondary}:has-text("Save")`,
+    );
+    await pvPage.click(`${S.flowEditorActions} ${S.flowEditorBtnPrimary}`);
+
+    await expect(pvPage.locator(S.flowRunner)).toBeVisible({
+      timeout: 10_000,
+    });
+    await pvPage.waitForSelector(
+      `${S.flowRunnerSummary}:not(:has(${S.flowRunnerRunning}))`,
+      { timeout: 20_000 },
+    );
+
+    // Both steps should complete (success or at least attempted)
+    const steps = pvPage.locator(S.flowRunnerStep);
+    await expect(steps).toHaveCount(2);
+
+    // First step should have run with Variant A body
+    await steps.first().click();
+    await pvPage
+      .locator(`${S.flowRunnerDetailTab}:has-text("Request")`)
+      .click();
+    const requestContent = pvPage.locator(S.stepDetailContent);
+    await expect(requestContent).toContainText("variant");
+  });
+
+  test("payload variant persists in saved flow data", async () => {
+    const flows = readData("flows.json") as Array<{
+      steps: Array<{ payloadId?: string }>;
+    }>;
+    const flow = flows.find((f) =>
+      f.steps.some((s) => s.payloadId === "payload-2"),
+    );
+    expect(flow).toBeTruthy();
   });
 });

@@ -40,6 +40,13 @@
    - Shows all the headers the server sent back as a table
    - Click **Copy** to copy all headers
 
+## Resize the Request/Response Panels
+
+1. Hover your mouse over the border between the request section and the response section (the divider above "Response Body" / "Response Headers").
+2. Your cursor changes to a vertical resize arrow.
+3. Click and drag up or down to give more space to the request or response panel.
+4. Both panels keep a minimum height so neither can be completely collapsed.
+
 ## How Captures Work After Sending
 
 1. If you set up captures (in the "captures" tab) and have an environment selected:

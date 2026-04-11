@@ -31,6 +31,7 @@ import { usePayloads } from "./hooks/usePayloads";
 import { useSaveToCollection } from "./hooks/useSaveToCollection";
 import { useSendRequest } from "./hooks/useSendRequest";
 import { useSession } from "./hooks/useSession";
+import { useResponseResize } from "./hooks/useResponseResize";
 import { useSidebarResize } from "./hooks/useSidebarResize";
 import { useTabs } from "./hooks/useTabs";
 import { parseQueryParams } from "./utils/url";
@@ -94,6 +95,10 @@ const App: React.FC = () => {
 
   // Sidebar resize
   const { sidebarWidth, handleResizeMouseDown } = useSidebarResize();
+
+  // Response panel resize
+  const { responseFraction, containerRef, handleResponseResizeMouseDown } =
+    useResponseResize();
 
   // Sidebar section
   const [sidebarSection, setSidebarSection] =
@@ -560,7 +565,7 @@ const App: React.FC = () => {
                       onKeyDown={handleKeyDown}
                     />
 
-                    <div className="request-response">
+                    <div className="request-response" ref={containerRef}>
                       {/* Request Section */}
                       <RequestPanelSection
                         activeTab={activeTab}
@@ -581,6 +586,13 @@ const App: React.FC = () => {
                         onAddCapture={addCapture}
                         onUpdateCapture={updateCapture}
                         onRemoveCapture={removeCapture}
+                        style={{ flex: `${1 - responseFraction}` }}
+                      />
+
+                      {/* Resize Handle */}
+                      <div
+                        className="response-resize-handle"
+                        onMouseDown={handleResponseResizeMouseDown}
                       />
 
                       {/* Response Section */}
@@ -589,6 +601,7 @@ const App: React.FC = () => {
                         error={error}
                         responsePanel={responsePanel}
                         onPanelChange={setResponsePanel}
+                        style={{ flex: `${responseFraction}` }}
                       />
                     </div>
                   </>

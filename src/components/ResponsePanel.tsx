@@ -19,6 +19,7 @@ interface ResponsePanelProps {
   error: string | null;
   responsePanel: ResponsePanelTab;
   onPanelChange: (panel: ResponsePanelTab) => void;
+  style?: React.CSSProperties;
 }
 
 const ResponsePanel: React.FC<ResponsePanelProps> = ({
@@ -26,6 +27,7 @@ const ResponsePanel: React.FC<ResponsePanelProps> = ({
   error,
   responsePanel,
   onPanelChange,
+  style,
 }) => {
   const [wordWrap, setWordWrap] = useState(false);
   const [copiedBody, setCopiedBody] = useState(false);
@@ -49,7 +51,7 @@ const ResponsePanel: React.FC<ResponsePanelProps> = ({
   }, [response]);
 
   return (
-    <div className="response-section">
+    <div className="response-section" style={style}>
       <div className="tabs">
         {(["body", "headers"] as ResponsePanelTab[]).map((tab) => (
           <button

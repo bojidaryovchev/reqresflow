@@ -91,6 +91,7 @@ export const S = {
 
   // ── Response Panel ──
   responseSection: ".response-section",
+  responseResizeHandle: ".response-resize-handle",
   responseTab: ".response-section .tab",
   responseMeta: ".response-meta",
   responseStatus: ".response-status",
@@ -250,8 +251,14 @@ export const S = {
   flowStepCaptureSelect: ".flow-step-capture-select",
   flowStepCaptureRemove: ".flow-step-capture-remove",
 
+  // ── Flow Step Payload Variant ──
+  flowStepPayload: ".flow-step-payload",
+  flowStepPayloadLabel: ".flow-step-payload-label",
+  flowStepPayloadSelect: ".flow-step-payload-select",
+
   // ── Flow Editor Last Run ──
   flowEditorLastRun: ".flow-editor-last-run",
+  flowEditorLastRunResizeHandle: ".last-run-resize-handle",
   flowEditorLastRunHeader: ".flow-editor-last-run-header",
   flowEditorLastRunTitle: ".flow-editor-last-run-title",
   flowEditorLastRunSummary: ".flow-editor-last-run-summary",

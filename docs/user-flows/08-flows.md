@@ -38,7 +38,10 @@ Flows let you chain multiple requests together and run them in order. This is us
 2. **"Continue on Error" toggle:**
    - **OFF** (default): If this step fails, the flow stops and skips all remaining steps.
    - **ON**: If this step fails, the flow continues to the next step anyway.
-3. **Step Captures:** You can add extra capture rules to a step.
+3. **Payload Variant:** If the request has multiple payload variants, a dropdown appears.
+   - **"Default (request's active payload)"**: Uses whichever variant is currently active on the saved request.
+   - Select a specific variant to always use that body when the step runs, regardless of what's active on the request.
+4. **Step Captures:** You can add extra capture rules to a step.
    - These work on top of any captures already defined in the saved request.
    - Captured values are available to all subsequent steps in the flow.
 
@@ -103,3 +106,11 @@ Flows let you chain multiple requests together and run them in order. This is us
 1. Click **Close** in the runner.
 2. The tab goes back to the flow editor.
 3. The last run results are remembered for reference.
+
+## Resize the Last Run Panel
+
+1. After a flow has been run, the **Last Run** section appears at the bottom of the flow editor.
+2. Hover your mouse over the top edge of the Last Run section.
+3. Your cursor changes to a vertical resize arrow.
+4. Click and drag up or down to make the panel taller or shorter.
+5. The panel height stays between a minimum and maximum size.

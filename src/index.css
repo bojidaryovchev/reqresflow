@@ -368,7 +368,24 @@ button {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  border-top: none;
+}
+
+.response-resize-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  margin-top: -2px;
+  margin-bottom: -2px;
   border-top: 2px solid var(--border);
+}
+
+.response-resize-handle:hover,
+.response-resize-handle:active {
+  border-top-color: var(--accent);
 }
 
 /* ── Key-Value Editor ── */
@@ -1545,10 +1562,6 @@ button {
   color: var(--text-secondary);
 }
 
-.request-variants {
-  /* no padding — items span full width like request-item */
-}
-
 .request-variant-item {
   display: flex;
   align-items: center;
@@ -2578,6 +2591,35 @@ button {
   margin-top: 8px;
 }
 
+.flow-step-payload {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-step-payload-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.flow-step-payload-select {
+  flex: 1;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.flow-step-payload-select:focus {
+  border-color: var(--accent);
+}
+
 .flow-step-captures-header {
   display: flex;
   align-items: center;
@@ -2757,6 +2799,23 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.last-run-resize-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  margin-top: -2px;
+  margin-bottom: -2px;
+}
+
+.last-run-resize-handle:hover,
+.last-run-resize-handle:active {
+  background: var(--accent);
 }
 
 .flow-editor-last-run-header {

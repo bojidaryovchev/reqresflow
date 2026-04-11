@@ -146,6 +146,12 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
     );
   };
 
+  const changeStepPayload = (stepId: string, payloadId: string | null) => {
+    updateSteps((prev) =>
+      prev.map((s) => (s.id === stepId ? { ...s, payloadId } : s)),
+    );
+  };
+
   const handleSave = () => {
     onSave({ ...flow, name: name.trim() || "Untitled Flow", steps });
   };
@@ -202,6 +208,7 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
               reqMethod={req?.method}
               reqName={req?.name}
               reqUrl={req?.url}
+              payloads={req?.payloads}
               collectionFound={!!col}
               onToggleExpand={() =>
                 setExpandedStepId(expandedStepId === step.id ? null : step.id)
@@ -209,6 +216,9 @@ const FlowEditor: React.FC<FlowEditorProps> = ({
               onMoveStep={(dir) => moveStep(index, dir)}
               onRemove={() => removeStep(step.id)}
               onToggleContinueOnError={() => toggleContinueOnError(step.id)}
+              onChangePayload={(payloadId) =>
+                changeStepPayload(step.id, payloadId)
+              }
               onAddCapture={() => addStepCapture(step.id)}
               onUpdateCapture={(captureId, updates) =>
                 updateStepCapture(step.id, captureId, updates)

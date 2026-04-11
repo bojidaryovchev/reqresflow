@@ -1,5 +1,5 @@
 import React from "react";
-import { FlowStep, ResponseCapture } from "../types/electron";
+import { FlowStep, Payload, ResponseCapture } from "../types/electron";
 import { METHOD_COLORS } from "../utils/http";
 import StepCaptureRow from "./StepCaptureRow";
 
@@ -11,11 +11,13 @@ interface FlowStepRowProps {
   reqMethod?: string;
   reqName?: string;
   reqUrl?: string;
+  payloads?: Payload[];
   collectionFound: boolean;
   onToggleExpand: () => void;
   onMoveStep: (direction: -1 | 1) => void;
   onRemove: () => void;
   onToggleContinueOnError: () => void;
+  onChangePayload: (payloadId: string | null) => void;
   onAddCapture: () => void;
   onUpdateCapture: (
     captureId: string,
@@ -32,11 +34,13 @@ const FlowStepRow: React.FC<FlowStepRowProps> = ({
   reqMethod,
   reqName,
   reqUrl,
+  payloads,
   collectionFound,
   onToggleExpand,
   onMoveStep,
   onRemove,
   onToggleContinueOnError,
+  onChangePayload,
   onAddCapture,
   onUpdateCapture,
   onRemoveCapture,
@@ -110,6 +114,24 @@ const FlowStepRow: React.FC<FlowStepRowProps> = ({
             />
             Continue on error
           </label>
+
+          {payloads && payloads.length > 1 && (
+            <div className="flow-step-payload">
+              <label className="flow-step-payload-label">Payload Variant</label>
+              <select
+                className="flow-step-payload-select"
+                value={step.payloadId || ""}
+                onChange={(e) => onChangePayload(e.target.value || null)}
+              >
+                <option value="">Default (request's active payload)</option>
+                {payloads.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || "Unnamed payload"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flow-step-captures">
             <div className="flow-step-captures-header">

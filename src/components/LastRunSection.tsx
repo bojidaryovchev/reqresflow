@@ -1,12 +1,52 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { FlowRunState } from "../types/electron";
 import FlowStepResultItem from "./FlowStepResultItem";
 import StepDetail from "./StepDetail";
 
+const LAST_RUN_MIN_HEIGHT = 100;
+const LAST_RUN_MAX_HEIGHT = 800;
+const LAST_RUN_DEFAULT_HEIGHT = 300;
+
 const LastRunSection: React.FC<{ runState: FlowRunState }> = ({ runState }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [height, setHeight] = useState(LAST_RUN_DEFAULT_HEIGHT);
+  const isResizingRef = useRef(false);
   const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(
     null,
+  );
+
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizingRef.current = true;
+      const startY = e.clientY;
+      const startHeight = height;
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!isResizingRef.current) return;
+        const delta = startY - ev.clientY;
+        const newHeight = Math.min(
+          LAST_RUN_MAX_HEIGHT,
+          Math.max(LAST_RUN_MIN_HEIGHT, startHeight + delta),
+        );
+        setHeight(newHeight);
+      };
+
+      const onMouseUp = () => {
+        isResizingRef.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [height],
   );
 
   const passedCount = runState.stepResults.filter(
@@ -29,7 +69,14 @@ const LastRunSection: React.FC<{ runState: FlowRunState }> = ({ runState }) => {
       : null;
 
   return (
-    <div className="flow-editor-last-run">
+    <div
+      className="flow-editor-last-run"
+      style={collapsed ? undefined : { height, flex: "none" }}
+    >
+      <div
+        className="last-run-resize-handle"
+        onMouseDown={handleResizeMouseDown}
+      />
       <div
         className="flow-editor-last-run-header"
         onClick={() => setCollapsed((c) => !c)}
