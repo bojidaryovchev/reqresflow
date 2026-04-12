@@ -11,7 +11,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test:e2e": "npx playwright test --config=e2e/playwright.config.ts --reporter list"
+    "test:e2e": "node -e \"require('fs').rmSync('.nyc_output',{recursive:true,force:true});require('fs').rmSync('coverage',{recursive:true,force:true})\" && cross-env E2E_COVERAGE=true electron-forge package && npx playwright test --config=e2e/playwright.config.ts --reporter list && nyc report --reporter=text --reporter=html --reporter=text-summary"
   },
   "keywords": [],
   "author": {
@@ -36,9 +36,12 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "babel-plugin-istanbul": "^8.0.0",
+    "cross-env": "^10.1.0",
     "electron": "41.1.1",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "nyc": "^18.0.0",
     "typescript": "~4.5.4",
     "vite": "^5.4.21"
   },

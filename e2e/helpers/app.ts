@@ -6,6 +6,7 @@ import {
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
+import { collectCoverage } from "./coverage";
 
 let app: ElectronApplication;
 let page: Page;
@@ -59,6 +60,9 @@ export async function launchApp(options?: { createTab?: boolean }): Promise<{
  * Clean up: close app and remove temp data directory.
  */
 export async function closeApp(): Promise<void> {
+  if (page) {
+    await collectCoverage(page).catch(() => {});
+  }
   if (app) {
     await app.close();
   }
